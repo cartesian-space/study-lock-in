@@ -9,7 +9,7 @@ meta:
 
 state:
   theme: "dark"
-  active_section: "transpose-shapes"
+  active_section: "vectors"
   journal_section: "vectors"
   start_date: "2026-11-05T09:10:10.387Z"
 
@@ -17,6 +17,7 @@ sections:
   - id: "vectors"
     title: "Vectors, Span & Basis"
     subtitle: "Phase A · Linear Algebra — vectors as arrows and as lists of numbers; what scaling and adding can reach"
+    journal: "extra reads: Feature scalling: min-max scalling vs z-score standardization"
     tasks:
       - text: "Watch 3B1B 'Essence of Linear Algebra' Ch.1 — Vectors, what even are they? (~9 min). Don't just watch — pause every time a vector moves on screen and ask: what did that transformation DO to space? The whole series is on the playlist link below."
         done: true
@@ -27,33 +28,42 @@ sections:
           - label: "3B1B Ch.1 — Vectors"
             url: "https://www.youtube.com/watch?v=fNk_zzaMoSs"
       - text: "Read: D2L §2.3 'Linear Algebra' — only the scalars & vectors part. Note how a vector is just an array with a shape."
-        done: false
+        done: true
+        done_at: "2026-11-13T17:13:57.664Z"
         resources:
           - label: "D2L: Linear Algebra"
             url: "https://d2l.ai/chapter_preliminaries/linear-algebra.html"
       - text: "Worksheet — vector arithmetic. By hand, on paper: (1) v=[2, 3], w=[-1, 2]: draw both, then v+w tip-to-tail. (2) Compute 2v − 3w. (3) Length ‖v‖ = √(v₁²+v₂²). (4) Unit vector v/‖v‖ (3 decimals) and check its length is 1. (5) Write [cos 30°, sin 30°] numerically; what is its length and why? ✔ Check: (1) [1, 5]; (2) [7, 0]; (3) √13 ≈ 3.606; (4) [0.555, 0.832]; (5) [0.866, 0.5]; length 1 — every point on the unit circle is a unit vector"
-        done: false
+        done: true
+        done_at: "2026-11-14T07:40:26.043Z"
       - text: "Worksheet — vectors as data. By hand, on paper: (1) A house is [rooms, m², age] = [3, 120, 10]. What does adding [0, 20, 0] mean? (2) Two houses a=[3,120,10], b=[4,150,2]: compute b − a and say what each entry means. (3) Why is ‖a − b‖ dominated by one coordinate here, and what would you do about it? ✔ Check: (1) an extension: +20 m², same rooms/age; (2) [1, 30, -8] — 1 more room, 30 m² more, 8 years newer; (3) m² is on a far larger scale; standardise features first (you'll do this in 'Initialisation & Normalisation')"
-        done: false
+        done: true
+        done_at: "2026-11-14T10:39:34.056Z"
       - text: "Code (NumPy, 10 min): import numpy as np; v=np.array([2,3]); w=np.array([-1,2]); print(v+w, 2*v-3*w, np.linalg.norm(v)). Confirm every worksheet answer."
-        done: false
+        done: true
+        done_at: "2026-11-14T10:58:59.665Z"
       - text: "Watch: 3B1B Ch.2 — Linear combinations, span, and basis vectors (~10 min). Draw the span of one vector, then two, while watching."
-        done: false
+        done: true
+        done_at: "2026-11-14T11:41:33.790Z"
         resources:
           - label: "3B1B Ch.2 — Span & basis"
             url: "https://www.youtube.com/watch?v=k7RM-ot2NWY"
       - text: "Read: Immersive Math ch.2 'Vectors' — the interactive span/basis figures. Drag the vectors until linear dependence feels obvious."
-        done: false
+        done: true
         bonus: true
+        done_at: "2026-11-14T17:29:28.657Z"
         resources:
           - label: "Immersive Linear Algebra"
             url: "https://immersivemath.com/ila/index.html"
       - text: "Worksheet — linear combinations. By hand, on paper: (1) Find a, b with a·[1,2] + b·[2,1] = [4,5]. (2) Find a, b with a·[1,2] + b·[2,1] = [0,3]. (3) Is [3,6] in the span of [1,2] alone? Of [1,2] and [2,4]? (4) Do [1,2] and [2,1] span all of 2D? Justify in one sentence. ✔ Check: (1) a=2, b=1; (2) a=2, b=-1; (3) yes (3·[1,2]); still only that same line — [2,4] adds nothing; (4) yes — they are not parallel, so together they reach every point"
-        done: false
+        done: true
+        done_at: "2026-11-14T17:43:56.982Z"
       - text: "Worksheet — dependence. By hand, on paper: (1) Are [1,0,1], [0,1,1], [1,1,2] linearly dependent? Find the combination if so. (2) What is the span of [1,0,0] and [0,1,0] in 3D? (3) A layer outputs 3 numbers but they're always [t, 2t, 3t]. How many 'real' dimensions of output are there? ✔ Check: (1) dependent: [1,0,1] + [0,1,1] − [1,1,2] = 0; (2) the xy-plane (z = 0); (3) one — every output lies on a single line (rank 1)"
-        done: false
+        done: true
+        done_at: "2026-11-14T18:24:57.651Z"
       - text: "Reflect (journal): In your own words: what is a basis, and why is 'linearly independent' the condition that makes coordinates unique?"
-        done: false
+        done: true
+        done_at: "2026-11-14T18:24:59.084Z"
   - id: "matrices"
     title: "Matrices & Multiplication"
     subtitle: "Phase A · Linear Algebra — a matrix moves space; multiplying matrices chains those moves, and order matters"
