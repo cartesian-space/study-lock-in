@@ -4191,3 +4191,11 @@ html.dim-mode .section-card .task-item:not(.zen-focus):hover { opacity: 0.7; fil
   .activity-heatmap, .hour-heatmap { padding: 14px !important; margin-bottom: 12px !important; border-radius: 14px !important; }
   .footer { padding: 18px 0 8px !important; }
 }
+
+/* Study hours: the 24 h strip scrolls sideways on narrow screens (day labels stay put) */
+.hh-scroll { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+.hh-inner { min-width: 100%; }
+@media (max-width: 768px) {
+  .hh-inner { width: 600px; min-width: 600px; }
+  .hh-axis span { font-size: 0.56rem !important; }
+}

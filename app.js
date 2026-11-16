@@ -3202,6 +3202,7 @@ function _fmtHour(h) { const s = h < 12 ? 'am' : 'pm'; const x = h % 12 === 0 ? 
 function renderHourHeatmap(activityLog) {
   const host = document.getElementById('hourHeatmap');
   if (!host) return;
+  const prevScroll = host.querySelector('.hh-scroll')?.scrollLeft ?? null;
   activityLog = activityLog || getActivityLog();
   const pad = n => String(n).padStart(2, '0');
   const dayKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -3255,10 +3256,14 @@ function renderHourHeatmap(activityLog) {
   const cells = `
     <div class="hh-days">${labels}</div>
     <div class="hh-plot">
-      <div class="hh-axis">${axis}</div>
-      <div class="hh-field">
-        <canvas class="hh-canvas" aria-hidden="true"></canvas>
-        <div class="hh-hits">${hits}</div>
+      <div class="hh-scroll">
+        <div class="hh-inner">
+          <div class="hh-axis">${axis}</div>
+          <div class="hh-field">
+            <canvas class="hh-canvas" aria-hidden="true"></canvas>
+            <div class="hh-hits">${hits}</div>
+          </div>
+        </div>
       </div>
       <div class="hh-legend"><span>Less</span>${[0,1,2,3,4,5,6,7,8].map(i => `<i style="background:var(--hh${i})"></i>`).join('')}<span>More</span></div>
     </div>`;
@@ -3270,6 +3275,13 @@ function renderHourHeatmap(activityLog) {
     </div>
     <div class="hh-wrap">${cells}</div>`;
   _drawHourField(host.querySelector('.hh-canvas'), days.map(d => grid[dayKey(d)].map(c => c.n)));
+  // Narrow screens scroll the 24 h strip sideways (like Study Activity): keep the previous position,
+  // or on first draw bring the current hour into view.
+  const sc = host.querySelector('.hh-scroll');
+  if (sc && sc.scrollWidth > sc.clientWidth) {
+    if (prevScroll != null) sc.scrollLeft = prevScroll;
+    else sc.scrollLeft = Math.max(0, (nowH + 1) / 24 * sc.scrollWidth - sc.clientWidth * 0.75);
+  }
 }
 
 /**
