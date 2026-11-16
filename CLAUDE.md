@@ -104,8 +104,6 @@ All browser storage keys are prefixed to avoid collisions:
 | `study-lock-in:trophies` | JSON array `["Task name", ...]` | Titles of completed tasks for the gravity trophy pile. |
 | `study-lock-in:custom-passcode-hash` | hex string | Custom SHA-256 passcode hash if changed by user. |
 | `study-tracker-ui:<syllabusKey>` | JSON string | Pure UI preferences (`activeDay`, `journalDay`, `theme`). |
-| `study-lock-in:map-view` | `"auto"` \| `"graph"` \| `"list"` \| `"aerial"` | Syllabi map view (auto = graph on desktop, list on phones). |
-| `study-lock-in:map-collapsed` | `"true"` or unset | Syllabi map collapsed. |
 | `study-lock-in:view` | `"study"` \| `"overview"` | Last view (also reflected in the URL hash `#study` / `#overview`). |
 
 ## 📄 Syllabus YAML Schema (`_data/syllabi/<key>.yml`)
@@ -201,9 +199,9 @@ progress that has not been exported yet.
 The page has two views, switched by the header's **Study | Overview** control (`setView()` / `applyView()`; URL hash `#study` / `#overview`, remembered in `study-lock-in:view`; browser back/forward works). `body[data-view]` drives visibility via CSS:
 
 * **Study** (default) — `.study-layout`: section list (`#dayNav`, a sticky left sidebar on PC ≥1000px, a scrolling pill row on smaller screens) + `.study-main` (the open section's tasks + "Notes for this section"). The journal always follows the open section (`switchDay()` sets `journalDay = activeDay`).
-* **Overview** — `.overview-head`, `#statsGrid`, `#activityHeatmap` (with **+ Log**), `#syllabiMap`. Map/aerial clicks call `setView('study')`.
+* **Overview** — `.overview-head`, `#statsGrid`, `#activityHeatmap` (with **+ Log**), and `#hourHeatmap` (**Study hours**: last 7 days × 24 local hours, `renderHourHeatmap()`, re-rendered from `renderHeatmap()`; counts `done` entries per hour, `undone` cancels one). (The syllabi map was removed; the Study sidebar replaced it.)
 * **Header**: title, view switch, Overall %, syllabus switcher, and one **⋯ menu** (`#appMenu`) holding theme, music, zen, Export/Import, reset and lock (same element ids as before, so existing handlers bind unchanged).
-* **Task cards**: type tag, text, links; toolbar shows **✓ Mark done** and **💬 Comment**; Copy / Edit / Add link / Delete live in a per-task ⋯ (`toggleTaskMenu()`). Worksheet answers are a closed `<details class="task-answers">` ("Show answers"). Completed tasks are grouped under "Completed · N" at the end of the section and collapse to one line (click to expand).
+* **Task cards**: type tag, text, links; toolbar shows **✓ Mark done** and **💬 Comment**; Copy / Edit / Add link / Delete live in a per-task ⋯ (`toggleTaskMenu()`). Worksheet answers are a closed `<details class="task-answers">` ("Show answers"). Completed tasks stay in their original position, fully visible, with a quieter done style.
 
 ## ⚠️ Critical Rules for Future Agents
 
@@ -225,13 +223,9 @@ The page has two views, switched by the header's **Study | Overview** control (`
    * Date parsing must use local date strings (`toDateStr`) to avoid UTC day-shift bugs.
    * `renderHeatmap()` shows a rolling 12-month window (the 11 previous months + the current month, rendered last). If there is no activity in that window (e.g. device clock far from the data), it anchors the window on the latest activity date instead; preserve this so the grid never renders empty.
 
-5. **Syllabi Map Invariants** (`renderSyllabiMap()`, under the heatmap):
-   * Read-only view over the same sources as everything else: `getEmbeddedSyllabi()` + each syllabus's localStorage overrides via `getSyllabusState(key)` (the active syllabus uses live `state`). Never add a separate map data store.
-   * Nodes = sections; edges = section order within a syllabus + each section's `requires`. A node is **done** when all non-bonus tasks are checked (`sectionProgress()`); a prerequisite counts as satisfied if done, if its syllabus has `status: done`, or if it no longer exists.
-   * **Graph** and **List** show only the selected syllabus. Graph is a serpentine path (`_renderMapSnake()`): row 1 left→right, row 2 right→left, …, one continuous 1 → 2 → 3 line, row length fitted to the card width (re-flows on resize, never scrolls sideways). No `requires` edges here.
-   * **Aerial** (`_renderMapAerial()`) is the only cross-syllabus view: one node per syllabus, `requires` aggregated into syllabus-level edges; `queued`/`done` syllabi appear as chips below.
-   * It re-renders from `updateStats()` and `switchDay()`; keep it cheap (no DOM work beyond the map host).
-   * Phones (≤720px) default to the list view in Auto; keep every view working.
+5. **Syllabus model** (`buildSyllabiMap()` — name kept for history):
+   * Read-only over `getEmbeddedSyllabi()` + each syllabus's localStorage overrides via `getSyllabusState(key)` (the active syllabus uses live `state`). Never add a separate data store.
+   * A section is **done** when all non-bonus tasks are checked (`sectionProgress()`); a `requires` prerequisite counts as satisfied if done, if its syllabus has `status: done`, or if it no longer exists. It powers the section "Requires" chips (`mapGo()` jumps there) and Overview widgets.
 
 6. **Aesthetic & UX Fidelity**:
    Calm, uncluttered study surface: neutral warm-grey base with the olive accent reserved for "current" and "done", white cards with 1px borders, typography `Inter` + `JetBrains Mono`. Keep the Study view focused on the open section — new dashboards/widgets belong in Overview, new rarely-used actions in a ⋯ menu. Keep the particle burst, trophy pile and Zen focus audio working.

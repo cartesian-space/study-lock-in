@@ -1136,10 +1136,17 @@ function toggleTaskMenu(taskId) {
   if (!pop) return;
   const open = pop.hidden;
   closeTaskMenus();
-  pop.hidden = !open;
+  if (!open) return;
+  pop.classList.remove('up');
+  pop.hidden = false;
+  pop.closest('.task-item')?.classList.add('menu-open');    // lift this card above its neighbours
+  // open downward; flip up only when there isn't room below in the viewport
+  const r = pop.getBoundingClientRect();
+  if (r.bottom > window.innerHeight - 8 && r.top - r.height - 50 > 0) pop.classList.add('up');
 }
 function closeTaskMenus() {
   document.querySelectorAll('.task-menu-pop:not([hidden])').forEach(p => { p.hidden = true; });
+  document.querySelectorAll('.task-item.menu-open').forEach(t => t.classList.remove('menu-open'));
 }
 
 /** Edit button handler: open the inline editor on the task's text (text is no longer click-to-edit). */
@@ -1305,7 +1312,8 @@ function renderApp() {
       <div class="heatmap-body" id="heatmapBody"></div>
     </div>
 
-    <section class="syllabi-map" id="syllabiMap"></section>
+    <div class="hour-heatmap" id="hourHeatmap"></div>
+
 
     <div class="study-layout view-study-only">
       <nav class="day-nav" id="dayNav" aria-label="Sections"></nav>
@@ -1360,7 +1368,6 @@ function applyView() {
     a.classList.toggle('on', a.dataset.view === v);
     a.setAttribute('aria-current', a.dataset.view === v ? 'page' : 'false');
   });
-  if (v === 'overview') renderSyllabiMap();   // size the map to the now-visible card
 }
 function setView(v) {
   if (v !== 'study' && v !== 'overview') return;
@@ -1501,10 +1508,7 @@ function renderActivePanel() {
     <div class="block-card section-card expanded" data-block="${addBlockId}">
       <div class="block-content"><div class="block-tasks">`;
 
-  const open = tasks.filter(t => !state.checked[t.id]), done = tasks.filter(t => state.checked[t.id]);
-  open.forEach(task => { html += renderTask(task, day.id); });
-  if (done.length) html += `<div class="done-group-head">Completed · ${done.length}</div>`;
-  done.forEach(task => { html += renderTask(task, day.id); });
+  tasks.forEach(task => { html += renderTask(task, day.id); });   // original order; completed tasks stay in place
 
   html += `<div class="add-task-row">
         <button class="add-item-btn" onclick="showAddTaskForm('${addBlockId}')" id="add-task-trigger-${addBlockId}">
@@ -1695,7 +1699,7 @@ function renderTask(task, dayId) {
   const tags = (kind.label ? `<span class="task-kind kind-${kind.kind}">${escapeHtml(kind.label)}</span>` : '')
     + (task.bonus ? '<span class="task-bonus-tag" title="Bonus — optional, does not block section completion">★ bonus</span>' : '');
   return `<div class="task-item ${doneClass} ${isComposing ? 'commenting' : ''} ${kind.kind ? 'kind-' + kind.kind : ''}" data-task="${task.id}" id="task-${task.id}">
-    <div class="task-info" ${doneClass ? `onclick="this.closest('.task-item').classList.toggle('open')" title="Show / hide details"` : ''}>
+    <div class="task-info">
       ${tags ? `<div class="task-tags">${tags}</div>` : ''}<span class="task-text">${formatTaskText(kind.body, kind.kind === 'worksheet')}</span>
       ${resourceHtml}
     </div>
@@ -1795,7 +1799,7 @@ function updateStats() {
   el('daysComplete').textContent = `${daysComplete} / ${state.days.length}`;
 
   el('streakCount').textContent = calculateStreak() + ' 🔥';
-  renderSyllabiMap();
+  if (typeof renderOverview === 'function') renderOverview();
 }
 
 /** Progress of one section. Bonus tasks never block completion (unless a section has only bonus tasks). */
@@ -1834,7 +1838,6 @@ function switchDay(dayId) {
   document.querySelectorAll('.day-pill').forEach(p => p.classList.toggle('active', p.dataset.day === dayId));
   renderActivePanel();
   renderJournal();
-  renderSyllabiMap();
 }
 
 function showAddDayForm() {
@@ -2564,12 +2567,10 @@ function importSyllabusFile() {
   input.click();
 }
 
-// ===== SYLLABI MAP (aerial overview of every syllabus in _data/syllabi) =====
-// Read-only view over the same data as everything else: embedded syllabi JSON + localStorage progress.
-// Nodes are sections; edges are the section order inside a syllabus plus each section's `requires:`.
+// ===== SYLLABUS MODEL (progress + prerequisites across every syllabus in _data/syllabi) =====
+// Read-only over the same data as everything else: embedded syllabi JSON + localStorage progress.
+// Powers the "Requires" chips on a section and the Overview page.
 const MAP_COLORS = ['#5B7046', '#B07A2E', '#4F6D8F', '#7A5C8E', '#A0573F', '#3F7A73', '#8E5A74', '#5C6470'];
-const MAP_VIEW_KEY = 'study-lock-in:map-view';           // auto | graph | list
-const MAP_COLLAPSED_KEY = 'study-lock-in:map-collapsed';  // "true" | unset
 
 function _jsq(s) { return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 function _shortTitle(t) { return String(t || '').split(/[\s/:—-]+/).filter(Boolean)[0] || ''; }
@@ -2640,283 +2641,7 @@ function buildSyllabiMap() {
   return { syllabi, byId, sylByKey, satisfied };
 }
 
-function _nodeState(n) {
-  return n.complete ? 'is-complete' : n.ready ? 'is-ready' : n.inProgress ? 'is-progress' : n.blockedBy.length ? 'is-blocked' : '';
-}
-
-function _nodeTooltip(n, model) {
-  const lines = [`${n.fullTitle}`, `${n.done}/${n.total} tasks${n.complete ? ' — done' : ''}`];
-  const reqs = n.prereqs.filter(p => !p.implicit);
-  if (reqs.length) {
-    lines.push('Requires:');
-    reqs.forEach(p => {
-      const r = model.byId[p.id];
-      lines.push(`  ${model.satisfied(p.id) ? '✓' : '○'} ${r ? `${model.sylByKey[r.key].title} › ${r.title}` : `${p.ref} (missing)`}`);
-    });
-  }
-  return lines.join('\n');
-}
-
-function _renderMapList(lanes) {
-  return `<div class="map-list">${lanes.map(s => `
-    <div class="map-lane ${s.status === 'paused' ? 'is-paused' : ''} ${s.key !== _activeSyllabusKey ? 'is-other' : ''}" style="--c:${s.color}">
-      <div class="map-lane-head">
-        <span class="map-lane-dot"></span>
-        <span class="map-lane-name">${escapeHtml(s.title)}</span>
-        <span class="map-lane-meta">${Math.round(s.taskPct * 100)}% · ${s.done}/${s.nodes.length} done${s.status === 'paused' ? ' · paused' : ''}</span>
-      </div>
-      <div class="map-lane-strip">${s.nodes.map(n => {
-        const isCurrent = s.key === _activeSyllabusKey && n.sid === state.activeDay;
-        const icon = n.complete ? '✓' : n.ready ? '★' : n.inProgress ? '▸' : '○';
-        return `<button class="map-chip ${_nodeState(n).replace('is-blocked', '')} ${isCurrent ? 'is-current' : ''}" data-node="${escapeHtml(n.id)}"
-            onclick="mapGo('${_jsq(s.key)}','${_jsq(n.sid)}')" title="${escapeHtml(n.fullTitle)} — ${n.done}/${n.total}">
-          <span class="map-chip-fill" style="width:${n.complete ? 100 : Math.round(n.pct * 100)}%"></span>
-          <span class="map-chip-text">${icon} ${escapeHtml(n.title)}</span></button>`;
-      }).join('')}</div>
-    </div>`).join('')}</div>`;
-}
-
-/** Aerial view: one node per syllabus; an edge A → B when any section of B requires a section of A. */
-function _renderMapAerial(model) {
-  const syl = model.syllabi;
-  if (!syl.length) return '';
-  const edges = {};
-  syl.forEach(s => s.nodes.forEach(n => n.prereqs.forEach(p => {
-    if (p.implicit) return;
-    const from = p.id.slice(0, p.id.indexOf('/'));
-    if (from === s.key || !model.sylByKey[from]) return;
-    const k = `${from}>${s.key}`;
-    (edges[k] = edges[k] || { from, to: s.key, count: 0, open: 0 }).count++;
-    if (!model.satisfied(p.id)) edges[k].open++;
-  })));
-  const list = Object.values(edges);
-
-  // Column = longest chain of syllabus-level prerequisites (cycle-guarded)
-  const col = {}, visiting = new Set();
-  const depth = key => {
-    if (key in col) return col[key];
-    if (visiting.has(key)) return 0;
-    visiting.add(key);
-    let d = 0;
-    list.forEach(e => { if (e.to === key) d = Math.max(d, depth(e.from) + 1); });
-    visiting.delete(key);
-    return (col[key] = d);
-  };
-  syl.forEach(s => depth(s.key));
-  const cols = [];
-  syl.forEach(s => (cols[col[s.key]] = cols[col[s.key]] || []).push(s));
-
-  const vertical = window.innerWidth <= 720;
-  const maxPer = Math.max(...cols.map(c => (c || []).length));
-  const H = 92, GAP_MAIN = vertical ? 46 : 70, GAP_CROSS = vertical ? 10 : 18, PAD = vertical ? 8 : 16;
-  const hostW = Math.min(document.getElementById('syllabiMap')?.clientWidth || 9999, document.documentElement.clientWidth - 24) - 34;
-  const W = vertical ? Math.max(130, Math.min(260, Math.floor((hostW - PAD * 2 - (maxPer - 1) * GAP_CROSS) / maxPer))) : 210;
-  const crossLen = maxPer * (vertical ? W : H) + (maxPer - 1) * GAP_CROSS;
-  const pos = {};
-  cols.forEach((c, ci) => (c || []).forEach((s, i) => {
-    const len = c.length * (vertical ? W : H) + (c.length - 1) * GAP_CROSS;
-    const off = (crossLen - len) / 2 + i * ((vertical ? W : H) + GAP_CROSS);
-    pos[s.key] = vertical
-      ? { x: PAD + off, y: PAD + ci * (H + GAP_MAIN) }
-      : { x: PAD + ci * (W + GAP_MAIN), y: PAD + off };
-  }));
-  const width = vertical ? crossLen + PAD * 2 : PAD * 2 + cols.length * W + (cols.length - 1) * GAP_MAIN;
-  const height = vertical ? PAD * 2 + cols.length * H + (cols.length - 1) * GAP_MAIN : crossLen + PAD * 2;
-
-  const paths = list.map(e => {
-    const a = pos[e.from], b = pos[e.to];
-    let d, mx, my;
-    if (vertical) {
-      const sx = a.x + W / 2, sy = a.y + H, tx = b.x + W / 2, ty = b.y, m = Math.max(20, (ty - sy) / 2);
-      d = `M${sx},${sy} C${sx},${sy + m} ${tx},${ty - m} ${tx},${ty}`; mx = (sx + tx) / 2; my = (sy + ty) / 2;
-    } else {
-      const sx = a.x + W, sy = a.y + H / 2, tx = b.x, ty = b.y + H / 2, m = Math.max(24, (tx - sx) / 2);
-      d = `M${sx},${sy} C${sx + m},${sy} ${tx - m},${ty} ${tx},${ty}`; mx = (sx + tx) / 2; my = (sy + ty) / 2;
-    }
-    const ok = e.open === 0;
-    return `<path class="map-edge-x ${ok ? 'ok' : ''}" d="${d}" marker-end="url(#aerialArrow${ok ? 'Ok' : ''})"/>
-      <text class="aerial-edge-label" x="${mx}" y="${my - 4}" text-anchor="middle">${e.count} link${e.count > 1 ? 's' : ''}${ok ? ' ✓' : ''}</text>`;
-  }).join('');
-
-  const cards = syl.map(s => {
-    const p = pos[s.key], current = s.key === _activeSyllabusKey;
-    const ready = s.nodes.filter(n => n.ready).length;
-    return `<button class="aerial-node ${current ? 'is-current' : ''} status-${escapeHtml(s.status)}" style="--c:${s.color};left:${p.x}px;top:${p.y}px;width:${W}px;height:${H}px"
-        onclick="aerialGo('${_jsq(s.key)}')" title="${escapeHtml(s.title)} — open">
-      <span class="aerial-name">${escapeHtml(s.title)}</span>
-      <span class="aerial-meta">${Math.round(s.taskPct * 100)}% · ${s.done}/${s.nodes.length} sections${s.status !== 'active' ? ` · ${escapeHtml(s.status)}` : ''}${ready ? ` · ★${ready}` : ''}</span>
-      <span class="aerial-bar"><span style="width:${Math.round(s.taskPct * 100)}%"></span></span>
-    </button>`;
-  }).join('');
-
-  return `<div class="map-aerial"><div class="aerial-canvas" style="width:${width}px;height:${height}px">
-    <svg class="aerial-svg" width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <marker id="aerialArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="map-arrow-x" d="M0,0L10,5L0,10z"/></marker>
-        <marker id="aerialArrowOk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="map-arrow-ok" d="M0,0L10,5L0,10z"/></marker>
-      </defs>${paths}</svg>${cards}</div></div>`;
-}
-
-/** Aerial node click: load that syllabus (stays in aerial view). */
-function aerialGo(key) {
-  if (key !== _activeSyllabusKey) switchSyllabus(key);
-  else renderSyllabiMap();
-  setView('study');
-  const target = document.getElementById('dayNav');
-  if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-/** Graph view: the selected syllabus only, as a serpentine path — row 1 L→R, row 2 R→L, … — one continuous 1 → 2 → 3 line. */
-function _renderMapSnake(s, host) {
-  const n = s.nodes.length;
-  if (!n) return '<p class="map-empty">This syllabus has no sections yet.</p>';
-  const avail = Math.max(260, (host.clientWidth || 900) - 48);
-  const TURN = 30, GAP_X = 34, GAP_Y = 34, NODE_H = 54, PAD_Y = 14;
-  let NODE_W = 156;
-  let cols = Math.max(2, Math.floor((avail - 2 * TURN + GAP_X) / (NODE_W + GAP_X)));
-  cols = Math.min(cols, n);
-  // Stretch nodes to fill the row (fewer truncated titles), capped so short syllabi don't get giant boxes
-  NODE_W = Math.min(cols === 2 ? NODE_W : 220, Math.floor((avail - 2 * TURN - (cols - 1) * GAP_X) / cols));
-  const rows = Math.ceil(n / cols);
-  const width = 2 * TURN + cols * NODE_W + (cols - 1) * GAP_X;
-  const height = 2 * PAD_Y + rows * NODE_H + (rows - 1) * GAP_Y;
-
-  const pos = s.nodes.map((_, i) => {
-    const r = Math.floor(i / cols), c = i % cols;
-    const col = r % 2 === 0 ? c : cols - 1 - c;
-    return { x: TURN + col * (NODE_W + GAP_X), y: PAD_Y + r * (NODE_H + GAP_Y), r };
-  });
-
-  let edges = '';
-  for (let i = 0; i < n - 1; i++) {
-    const a = pos[i], b = pos[i + 1], mid = NODE_H / 2;
-    let d;
-    if (a.r === b.r) {
-      d = a.r % 2 === 0 ? `M${a.x + NODE_W},${a.y + mid} L${b.x},${b.y + mid}` : `M${a.x},${a.y + mid} L${b.x + NODE_W},${b.y + mid}`;
-    } else if (a.r % 2 === 0) {          // end of a L→R row: turn down on the right
-      const k = a.x + NODE_W + TURN * 0.95;
-      d = `M${a.x + NODE_W},${a.y + mid} C${k},${a.y + mid} ${k},${b.y + mid} ${b.x + NODE_W},${b.y + mid}`;
-    } else {                             // end of a R→L row: turn down on the left
-      const k = a.x - TURN * 0.95;
-      d = `M${a.x},${a.y + mid} C${k},${a.y + mid} ${k},${b.y + mid} ${b.x},${b.y + mid}`;
-    }
-    edges += `<path class="map-edge snake-edge ${s.nodes[i].complete ? 'is-done' : ''}" d="${d}" marker-end="url(#mapArrow${s.nodes[i].complete ? 'Done' : ''})"/>`;
-  }
-
-  const maxChars = Math.max(8, Math.floor((NODE_W - 44) / 7.1));
-  const boxes = s.nodes.map((nd, i) => {
-    const { x, y } = pos[i];
-    const isCurrent = nd.sid === state.activeDay;
-    // On a single path "waiting on the previous section" is implied, so not-started sections are just ○
-    const icon = nd.complete ? '✓' : nd.ready ? '★' : nd.inProgress ? '▸' : '○';
-    const label = nd.title.length > maxChars ? nd.title.slice(0, maxChars - 1) + '…' : nd.title;
-    return `<g class="map-node ${_nodeState(nd).replace('is-blocked', '')} ${isCurrent ? 'is-current' : ''}" data-node="${escapeHtml(nd.id)}" style="--c:${s.color}"
-        onclick="mapGo('${_jsq(s.key)}','${_jsq(nd.sid)}')" tabindex="0" role="button" onkeydown="if(event.key==='Enter')mapGo('${_jsq(s.key)}','${_jsq(nd.sid)}')">
-      <title>${escapeHtml(`${i + 1}. ${nd.fullTitle}\n${nd.done}/${nd.total} tasks${nd.complete ? ' — done' : ''}`)}</title>
-      <rect class="map-box" x="${x}" y="${y}" width="${NODE_W}" height="${NODE_H}" rx="10"/>
-      ${nd.inProgress ? `<rect class="map-fill" x="${x + 2}" y="${y + NODE_H - 6}" width="${Math.max(4, (NODE_W - 4) * nd.pct)}" height="4" rx="2"/>` : ''}
-      <text class="map-num" x="${x + 10}" y="${y + 21}">${i + 1}</text>
-      <text class="map-label" x="${x + 28}" y="${y + 21}">${icon} ${escapeHtml(label)}</text>
-      <text class="map-sub" x="${x + 28}" y="${y + 39}">${nd.complete ? 'done' : `${nd.done}/${nd.total}`}</text>
-    </g>`;
-  }).join('');
-
-  return `<div class="map-graph map-snake">
-    <svg class="map-svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <marker id="mapArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="map-arrow" d="M0,0L10,5L0,10z"/></marker>
-        <marker id="mapArrowDone" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="map-arrow-done" style="fill:${s.color}" d="M0,0L10,5L0,10z"/></marker>
-      </defs>
-      ${edges}${boxes}
-    </svg>
-  </div>`;
-}
-
-function renderSyllabiMap() {
-  const host = document.getElementById('syllabiMap');
-  if (!host || !state) return;
-  const model = buildSyllabiMap();
-  const lanes = model.syllabi.filter(s => s.status === 'active' || s.status === 'paused')
-    .sort((a, b) => (a.status === 'paused') - (b.status === 'paused'));
-  const view = localStorage.getItem(MAP_VIEW_KEY) || 'auto';
-  const aerial = view === 'aerial';
-  const current = model.sylByKey[_activeSyllabusKey];
-  // Graph/List focus on the selected syllabus only; Aerial shows every syllabus.
-  const scope = aerial ? lanes : (current ? [current] : []);
-  const others = aerial ? model.syllabi.filter(s => !lanes.includes(s)) : [];
-  const collapsed = localStorage.getItem(MAP_COLLAPSED_KEY) === 'true';
-
-  const prevStrips = [...host.querySelectorAll('.map-lane-strip')].map(el => el.scrollLeft);
-
-  const totalSections = scope.reduce((a, s) => a + s.nodes.length, 0);
-  const doneSections = scope.reduce((a, s) => a + s.done, 0);
-
-  host.className = `syllabi-map view-${view}${collapsed ? ' collapsed' : ''}`;
-  host.innerHTML = `
-    <div class="map-header">
-      <button class="map-title" onclick="toggleMapCollapsed()" title="Collapse / expand">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="5" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="12" r="2"/><path d="M7 6h4a4 4 0 0 1 4 4v0M7 18h4a4 4 0 0 0 4-4v0M15 12h2"/></svg>
-        Syllabi Map
-        <span class="map-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M6 9l6 6 6-6"/></svg></span>
-      </button>
-      <span class="map-summary">${aerial ? `${lanes.filter(s => s.status === 'active').length} active · ` : `${escapeHtml(current ? current.title : '')} · `}${doneSections}/${totalSections} sections done</span>
-      <div class="map-view-toggle" role="group" aria-label="Map view">
-        <button class="${view === 'graph' ? 'on' : ''}" onclick="setMapView('graph')" title="Selected syllabus as a winding path">Graph</button>
-        <button class="${view === 'list' ? 'on' : ''}" onclick="setMapView('list')" title="Compact lanes">List</button>
-        <button class="${view === 'auto' ? 'on' : ''}" onclick="setMapView('auto')" title="Graph on desktop, list on phone">Auto</button>
-        <button class="${view === 'aerial' ? 'on' : ''}" onclick="setMapView('aerial')" title="One node per syllabus">Aerial</button>
-      </div>
-    </div>
-    <div class="map-body">
-      ${aerial ? _renderMapAerial(model) : current ? _renderMapSnake(current, host) + _renderMapList([current]) : '<p class="map-empty">No syllabus selected.</p>'}
-      ${others.length ? `<div class="map-others">${others.map(s => `<button class="map-other" style="--c:${s.color}" onclick="switchSyllabus('${_jsq(s.key)}')" title="meta.status: ${escapeHtml(s.status)}">
-          <span class="map-lane-dot"></span>${escapeHtml(s.title)} <em>${escapeHtml(s.status)}</em> <b>${Math.round(s.taskPct * 100)}%</b></button>`).join('')}</div>` : ''}
-      <div class="map-legend">
-        <span><b class="lg lg-complete"></b>done</span><span><b class="lg lg-progress"></b>▸ in progress</span>
-        <span><b class="lg lg-ready"></b>★ ready</span>${aerial ? '<span><b class="lg lg-blocked"></b>⧗ waiting on prereq</span>' : ''}
-        ${aerial ? '<span><b class="lg lg-cross"></b>cross-syllabus prereq</span>' : ''}
-      </div>
-    </div>`;
-
-  // Restore list-strip scroll positions, or centre on where you are.
-  const centre = (scroller, el) => {
-    if (!scroller || !el) return;
-    const sr = scroller.getBoundingClientRect(), er = el.getBoundingClientRect();
-    scroller.scrollLeft += (er.left - sr.left) - (sr.width - er.width) / 2;
-  };
-  host.querySelectorAll('.map-lane-strip').forEach((strip, i) => {
-    if (prevStrips.length === host.querySelectorAll('.map-lane-strip').length) strip.scrollLeft = prevStrips[i];
-    else centre(strip, strip.querySelector('.map-chip.is-current') || strip.querySelector('.map-chip.is-progress, .map-chip.is-ready'));
-  });
-}
-
-// The serpentine graph fits its row length to the card width, so re-flow it on resize.
-let _mapResizeTimer = null;
-let _mapLastWidth = 0;
-window.addEventListener('resize', () => {
-  clearTimeout(_mapResizeTimer);
-  _mapResizeTimer = setTimeout(() => {
-    const host = document.getElementById('syllabiMap');
-    if (!host || !state || host.clientWidth === _mapLastWidth) return;
-    _mapLastWidth = host.clientWidth;
-    renderSyllabiMap();
-  }, 150);
-});
-
-function setMapView(view) {
-  localStorage.setItem(MAP_VIEW_KEY, view);
-  const host = document.getElementById('syllabiMap');
-  if (host) host.innerHTML = ''; // drop remembered scroll so the new view centres itself
-  renderSyllabiMap();
-}
-
-function toggleMapCollapsed() {
-  const collapsed = localStorage.getItem(MAP_COLLAPSED_KEY) === 'true';
-  if (collapsed) localStorage.removeItem(MAP_COLLAPSED_KEY); else localStorage.setItem(MAP_COLLAPSED_KEY, 'true');
-  renderSyllabiMap();
-}
-
-/** Jump from the map to a section (switching syllabus if needed). */
+/** Jump to a section (switching syllabus if needed) — used by "Requires" chips and Overview links. */
 function mapGo(key, sid) {
   if (key !== _activeSyllabusKey) switchSyllabus(key);
   if (findDay(sid)) {
@@ -3255,9 +2980,71 @@ window.addEventListener('resize', () => {
   _heatmapResizeTimer = setTimeout(() => { if (document.getElementById('heatmapBody') && state) renderHeatmap(); }, 150);
 });
 
+// ===== STUDY HOURS: last 7 days × 24 hours, from each activity entry's local time =====
+function _fmtHour(h) { const s = h < 12 ? 'am' : 'pm'; const x = h % 12 === 0 ? 12 : h % 12; return `${x} ${s}`; }
+
+function renderHourHeatmap(activityLog) {
+  const host = document.getElementById('hourHeatmap');
+  if (!host) return;
+  const pad = n => String(n).padStart(2, '0');
+  const dayKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = [];                                              // oldest first → today last
+  for (let i = 6; i >= 0; i--) { const d = new Date(today); d.setDate(d.getDate() - i); days.push(d); }
+  const grid = {}; days.forEach(d => { grid[dayKey(d)] = Array.from({ length: 24 }, () => ({ n: 0, topics: [] })); });
+
+  for (const e of activityLog || []) {
+    if (!e || !e.t) continue;
+    const t = new Date(e.t); if (isNaN(t)) continue;
+    const row = grid[dayKey(t)]; if (!row) continue;
+    const cell = row[t.getHours()];
+    if (e.action === 'done') { cell.n++; cell.topics.push(e); }
+    else if (e.action === 'undone') {
+      cell.n = Math.max(0, cell.n - 1);
+      const i = cell.topics.map(x => x.topic).lastIndexOf(e.topic);   // drop the un-ticked item from the tooltip too
+      if (i >= 0) cell.topics.splice(i, 1); else cell.topics.pop();
+    }
+  }
+
+  const all = Object.values(grid).flat();
+  const max = Math.max(0, ...all.map(c => c.n));
+  const total = all.reduce((a, c) => a + c.n, 0);
+  const level = n => (n <= 0 || !max) ? 0 : Math.min(4, Math.ceil((n / max) * 4));
+  // peak hour across the week
+  const byHour = Array.from({ length: 24 }, (_, h) => days.reduce((a, d) => a + grid[dayKey(d)][h].n, 0));
+  const peak = byHour.indexOf(Math.max(...byHour));
+  const activeDays = days.filter(d => grid[dayKey(d)].some(c => c.n > 0)).length;
+  const now = new Date(), nowH = now.getHours(), todayKey = dayKey(today);
+  const dayLabel = d => dayKey(d) === todayKey ? 'Today'
+    : d.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + d.getDate();
+
+  let cells = '<span class="hh-corner"></span>';
+  for (let h = 0; h < 24; h++) cells += `<span class="hh-hour">${h % 3 === 0 ? _fmtHour(h).replace(' ', '') : ''}</span>`;
+  for (const d of days) {
+    const k = dayKey(d), isToday = k === todayKey;
+    cells += `<span class="hh-day${isToday ? ' is-today' : ''}">${escapeHtml(dayLabel(d))}</span>`;
+    grid[k].forEach((c, h) => {
+      const future = isToday && h > nowH, current = isToday && h === nowH;
+      const label = `${dayLabel(d)} · ${_fmtHour(h)}–${_fmtHour((h + 1) % 24)}`;
+      let tip = c.n ? `${label}: ${c.n} item${c.n > 1 ? 's' : ''}` : `${label}: nothing logged`;
+      c.topics.slice(0, 4).forEach(x => { const tp = String(x.topic || ''); tip += `\n• ${tp.length > 70 ? tp.slice(0, 67) + '…' : tp}`; });
+      if (c.topics.length > 4) tip += `\n… and ${c.topics.length - 4} more`;
+      cells += `<span class="hh-cell${future ? ' future' : ''}${current ? ' now' : ''}" data-level="${level(c.n)}" title="${escapeHtml(tip)}"></span>`;
+    });
+  }
+
+  host.innerHTML = `
+    <div class="hh-header">
+      <h3 class="heatmap-title">Study hours <span class="heatmap-range">last 7 days</span></h3>
+      <span class="hh-summary">${total ? `${total} item${total > 1 ? 's' : ''} on ${activeDays} day${activeDays > 1 ? 's' : ''} · most active around <b>${_fmtHour(peak)}</b>` : 'Nothing logged in the last 7 days yet'}</span>
+    </div>
+    <div class="hh-scroll"><div class="hh-grid">${cells}</div></div>`;
+}
+
 function renderHeatmap(activityLog) {
   activityLog = activityLog || getActivityLog();
   if (!Array.isArray(activityLog)) activityLog = [];
+  renderHourHeatmap(activityLog);
 
   const body = document.getElementById('heatmapBody');
   if (!body) return;
