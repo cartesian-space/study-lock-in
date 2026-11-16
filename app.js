@@ -1560,11 +1560,37 @@ function _syncMenuStates() {
   document.getElementById('musicToggle')?.classList.toggle('active', !!musicOn);
   document.getElementById('dimToggle')?.classList.toggle('active', !!dimMode);
 }
+// ── Pop-ups close on any outside click (and Esc) ─────────────────────
+function closeDataPanel() {
+  const panel = document.getElementById('dataPanel');
+  if (panel && panel.style.display !== 'none') {
+    panel.style.display = 'none';
+    document.getElementById('dataToggle')?.classList.remove('active');
+  }
+}
+/** Small inline forms close too — but only when nothing has been typed, so no input is lost. */
+function _closeEmptyInlineForms(e) {
+  document.querySelectorAll('.add-resource-form').forEach(form => {
+    if (form.style.display === 'none' || (e && form.closest('.add-resource-wrapper')?.contains(e.target))) return;
+    const typed = [...form.querySelectorAll('input')].some(i => i.value.trim());
+    if (!typed) form.style.display = 'none';
+  });
+  const log = document.getElementById('logActivity');
+  if (log && !log.hidden && !(e && (log.contains(e.target) || e.target.closest('#logActivityBtn')))) {
+    if (!document.getElementById('logTopic')?.value.trim()) toggleLogActivity();
+  }
+}
 document.addEventListener('click', e => {
   if (!e.target.closest('#appMenu')) closeAppMenu();
   if (!e.target.closest('.task-menu')) closeTaskMenus();
+  if (!e.target.closest('#dataPanel, #dataToggle')) closeDataPanel();
+  // the task ⋯ "Add link" item opens the form itself — don't close it on that same click
+  if (!e.target.closest('.task-menu-item')) _closeEmptyInlineForms(e);
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeAppMenu(); closeTaskMenus(); } });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  closeAppMenu(); closeTaskMenus(); closeDataPanel(); _closeEmptyInlineForms(null);
+});
 
 // ===== RENDER: DAY NAVIGATION =====
 function renderDayNav() {
