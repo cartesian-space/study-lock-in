@@ -3945,3 +3945,18 @@ body[data-view="overview"] .syllabi-map { background: var(--bg-card); border: 1p
 @media (max-width: 768px) {
   .study-layout .day-nav { -webkit-mask-image: none !important; mask-image: none !important; background: var(--bg-primary); }
 }
+
+/* Sidebar: fully done sections are dimmed with a tick on the right */
+@media (min-width: 1000px) {
+  .study-layout .day-nav .day-pill.completed .day-pill-number::after { content: none; }
+  .study-layout .day-nav .day-pill.completed { opacity: 0.55; }
+  .study-layout .day-nav .day-pill.completed:hover,
+  .study-layout .day-nav .day-pill.completed.active { opacity: 1; }
+  .study-layout .day-nav .day-pill.completed .day-pill-label { text-decoration: line-through; text-decoration-color: var(--text-dim); }
+  .study-layout .day-nav .day-pill.completed::after {
+    content: ''; flex: 0 0 auto; width: 16px; height: 16px; margin-left: auto; border-radius: 50%;
+    background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center / 10px no-repeat;
+  }
+  .study-layout .day-nav .day-pill { display: flex; align-items: center; gap: 6px; }
+  .study-layout .day-nav .day-pill-label { flex: 1; min-width: 0; }
+}
