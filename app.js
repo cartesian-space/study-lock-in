@@ -1542,26 +1542,31 @@ function renderTask(task, dayId) {
     </div>
   </div>`;
 
-  // Inline comments
+  // Comment thread — lives inside the task card (below the toolbar), styled as a chat-like thread.
+  // Comment text gets the same matrix grids as worksheets; typed line breaks are kept.
+  const AVATAR = '<span class="comment-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>';
   let commentHtml = '';
   if (isComposing || commentCount > 0) {
-    commentHtml = `<div class="inline-comments" id="comments-${task.id}" onclick="event.stopPropagation()">`;
+    commentHtml = `<div class="inline-comments comment-thread" id="comments-${task.id}" onclick="event.stopPropagation()">
+      <div class="comment-thread-head">Notes${commentCount ? ` · ${commentCount}` : ''}</div>`;
     comments.forEach((c, i) => {
-      commentHtml += `<div class="comment-item">
-        <p class="comment-text">${escapeHtml(c)}</p>
-        <div class="comment-meta">
-          <button class="comment-delete" onclick="removeComment('${task.id}', ${i})">Delete</button>
+      commentHtml += `<div class="comment-item">${AVATAR}
+        <div class="comment-bubble">
+          <div class="comment-text">${renderMatrices(String(c)).replace(/\n/g, '<br>')}</div>
+          <button class="comment-delete" onclick="removeComment('${task.id}', ${i})" title="Delete note" aria-label="Delete note">Delete</button>
         </div>
       </div>`;
     });
     if (isComposing) {
-      commentHtml += `<div class="comment-compose">
-        <textarea class="comment-input" id="commentInput" placeholder="Add a comment…" rows="2"
-          onclick="event.stopPropagation()" onkeydown="handleCommentKeydown(event, '${task.id}')"></textarea>
-        <div class="comment-compose-actions">
-          <button class="comment-submit" onclick="event.stopPropagation(); submitComment('${task.id}')">Comment</button>
-          ${commentCount > 0 ? `<button class="comment-resolve" onclick="event.stopPropagation(); resolveComments('${task.id}')">Resolve</button>` : ''}
-          <button class="resource-form-btn cancel" onclick="event.stopPropagation(); closeCompose()">Cancel</button>
+      commentHtml += `<div class="comment-item comment-compose">${AVATAR}
+        <div class="comment-bubble">
+          <textarea class="comment-input" id="commentInput" placeholder="Add a note… (matrices like [[1, 2], [3, 4]] render as grids · Ctrl/⌘+Enter to post)" rows="2"
+            onclick="event.stopPropagation()" onkeydown="handleCommentKeydown(event, '${task.id}')"></textarea>
+          <div class="comment-compose-actions">
+            <button class="comment-submit" onclick="event.stopPropagation(); submitComment('${task.id}')">Post note</button>
+            ${commentCount > 0 ? `<button class="comment-resolve" onclick="event.stopPropagation(); resolveComments('${task.id}')">Resolve all</button>` : ''}
+            <button class="resource-form-btn cancel" onclick="event.stopPropagation(); closeCompose()">Cancel</button>
+          </div>
         </div>
       </div>`;
     }

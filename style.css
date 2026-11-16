@@ -3684,3 +3684,65 @@ button, a, input, select, textarea, .block-header, .day-pill {
 .task-text .mx + .mx { margin-left: 2px; }
 .task-text .task-check .task-line:first-of-type { margin-top: 2px; }
 .task-text .task-check .task-line:has(.mx) { margin: 8px 0; }
+
+/* ── Comments: a thread inside the task card (no more floating panel on the right) ── */
+.inline-comments.comment-thread {
+  position: relative; top: auto; right: auto; width: auto; z-index: auto;
+  margin: 12px 0 2px; padding: 4px 0 2px 14px;
+  background: none; border: none; border-left: 2px solid var(--border-color);
+  border-radius: 0; box-shadow: none; overflow: visible; animation: fadeSlideIn 0.2s ease;
+}
+.inline-comments.comment-thread::before { display: none; }
+.comment-thread-head {
+  font-size: 0.7rem; font-weight: 600; letter-spacing: 0.02em; color: var(--text-muted);
+  margin: 0 0 8px; display: flex; align-items: center; gap: 6px;
+}
+.comment-thread .comment-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 0; margin: 0 0 10px; border: none; background: none;
+}
+.comment-avatar {
+  flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--accent-dim); color: var(--accent);
+}
+.comment-avatar svg { width: 14px; height: 14px; }
+.comment-bubble {
+  position: relative; flex: 1; min-width: 0;
+  background: var(--bg-surface); border: 1px solid var(--border-color);
+  border-radius: 4px 12px 12px 12px; padding: 9px 12px;
+}
+/* speech-bubble tail pointing at the avatar */
+.comment-bubble::before {
+  content: ''; position: absolute; left: -7px; top: 9px; width: 12px; height: 12px;
+  background: var(--bg-surface); border-left: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);
+  transform: rotate(45deg);
+}
+.comment-thread .comment-text {
+  font-size: 0.84rem; color: var(--text-primary); line-height: 1.6; white-space: normal; overflow-wrap: anywhere;
+}
+.comment-thread .comment-text .mx { margin: 6px 4px; }
+.comment-thread .comment-delete {
+  position: absolute; top: 6px; right: 8px; opacity: 0; transition: opacity var(--transition);
+  border: none; background: none; color: var(--text-muted); font-size: 0.68rem; cursor: pointer; padding: 2px 4px;
+}
+.comment-thread .comment-item:hover .comment-delete { opacity: 1; }
+.comment-thread .comment-delete:hover { color: var(--red); }
+.comment-thread .comment-compose .comment-bubble { background: var(--bg-card); border-style: dashed; }
+.comment-thread .comment-compose .comment-bubble::before { background: var(--bg-card); }
+.comment-thread .comment-input {
+  width: 100%; min-height: 60px; border: none; background: transparent; padding: 0;
+  font-size: 0.84rem; line-height: 1.55; resize: vertical; outline: none;
+}
+.comment-thread .comment-compose-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+/* matrices/text inside comments reuse the worksheet matrix style */
+.comment-text .mx { position: relative; display: inline-flex; vertical-align: middle; padding: 3px 9px; max-width: 100%; overflow-x: auto; }
+.comment-text .mx::before, .comment-text .mx::after { content: ''; position: absolute; top: 0; bottom: 0; width: 6px; border: 1.5px solid currentColor; opacity: 0.75; }
+.comment-text .mx::before { left: 0; border-right: none; border-radius: 2px 0 0 2px; }
+.comment-text .mx::after { right: 0; border-left: none; border-radius: 0 2px 2px 0; }
+.comment-text .mx-grid { display: grid; column-gap: 14px; row-gap: 2px; }
+.comment-text .mx-cell { font-family: var(--font-mono); font-size: 0.86em; line-height: 1.45; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (max-width: 768px) {
+  .inline-comments.comment-thread { padding-left: 10px; }
+  .comment-thread .comment-delete { opacity: 1; }
+  .comment-avatar { width: 24px; height: 24px; }
+}
