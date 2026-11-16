@@ -17,7 +17,7 @@ google_client_id: ""
 allowed_email_sha256: "b6fbd8fe4ff88e383a96285c61e37f6150d8c2acad204aa8dc61c1d522b5bf45"
 
 # Passcode fallback (used only while google_client_id is empty): SHA-256 of the passcode.
-# NOTE: this hash is NOT "lockin" (that was a wrong comment); set it with scripts/set-passcode.sh.
+# the passcode doesn't have to extreamly secure, this is just a simple guardrail
 passcode_hash: "0a4e3dfca083d943032d0726daa1b5a1d063567d3082a7ff0165e1bced2aa088"
 
 # Files to exclude from Jekyll generation
