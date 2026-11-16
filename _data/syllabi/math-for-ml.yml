@@ -8,9 +8,9 @@ meta:
   color: "#5B7046"
 
 state:
-  theme: "dark"
-  active_section: "vectors"
-  journal_section: "vectors"
+  theme: "light"
+  active_section: "matrices"
+  journal_section: "matrices"
   start_date: "2026-11-05T09:10:10.387Z"
 
 sections:
@@ -69,7 +69,8 @@ sections:
     subtitle: "Phase A · Linear Algebra — a matrix moves space; multiplying matrices chains those moves, and order matters"
     tasks:
       - text: "Watch: 3B1B Ch.3 — Linear transformations and matrices (~11 min). Key idea: columns = images of the basis vectors."
-        done: false
+        done: true
+        done_at: "2026-11-15T13:56:11.635Z"
         resources:
           - label: "3B1B Ch.3 — Linear transformations"
             url: "https://www.youtube.com/watch?v=kYB8IZa5AuE"

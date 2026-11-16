@@ -1,5 +1,5 @@
 # Study Lock-In — activity log (powers the contribution heatmap)
-# Exported: 2026-11-14T18:25:36.423Z
+# Exported: 2026-11-16T16:00:31.309Z
 - t: "2026-01-05T11:21:00Z"
   syllabus: "Work & Infra"
   topic: "HAProxy health check tuning — reducing false positive backend downs"
@@ -911,4 +911,20 @@
 - t: "2026-11-14T18:24:59.085Z"
   syllabus: "Math for ML/DL/Neural Networks"
   topic: "Reflect (journal): In your own words: what is a basis, and why is 'linearly independent' the condition that makes coordinates unique?"
+  action: "done"
+- t: "2026-11-15T13:56:11.636Z"
+  syllabus: "Math for ML/DL/Neural Networks"
+  topic: "Watch: 3B1B Ch.3 — Linear transformations and matrices (~11 min). Key idea: columns = images of the basis vectors."
+  action: "done"
+- t: "2026-11-16T15:59:00.571Z"
+  syllabus: "Daily Study Log"
+  topic: "How we model language to vectors/embeddings"
+  action: "done"
+- t: "2026-11-16T15:59:28.780Z"
+  syllabus: "Daily Study Log"
+  topic: "Intution on Vector/matrices"
+  action: "done"
+- t: "2026-11-16T15:59:59.346Z"
+  syllabus: "Daily Study Log"
+  topic: "Four Non-intuitive ways to see matrices"
   action: "done"
