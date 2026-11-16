@@ -1933,7 +1933,19 @@ function updateStats() {
     const bar = document.getElementById('dayBar-' + day.id);
     if (bar) bar.style.width = (p.pct * 100) + '%';
     const pill = document.querySelector(`.day-pill[data-day="${day.id}"]`);
-    if (pill) pill.classList.toggle('completed', p.complete);
+    if (pill) {
+      pill.classList.toggle('completed', p.complete);
+      // partly done → sidebar pie badge showing the share completed
+      const partial = !p.complete && p.done > 0;
+      pill.classList.toggle('partial', partial);
+      pill.style.setProperty('--pct', `${(p.pct * 100).toFixed(1)}%`);
+      pill.title = p.total ? `${p.done}/${p.total} tasks · ${Math.round(p.pct * 100)}%` : '';
+    }
+    // keep the open section's "x/y tasks" counter in sync without re-rendering the panel
+    if (day.id === state.activeDay) {
+      const counter = document.querySelector('.day-panel .day-progress-text');
+      if (counter) counter.textContent = `${p.done}/${p.total} tasks${p.complete ? ' · ✓ section done' : ''}`;
+    }
     if (p.complete) daysComplete++;
   });
 
