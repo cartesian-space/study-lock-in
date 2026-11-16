@@ -7,6 +7,7 @@ function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme') || 'light';
   const next = current === 'dark' ? 'light' : 'dark';
   applyTheme(next);
+  if (document.getElementById('hourHeatmap')) renderHourHeatmap();
   if (state) {
     state.theme = next;
     saveUIState();  // localStorage only — no TOML write
@@ -1496,6 +1497,7 @@ function getView() {
 function applyView() {
   const v = getView();
   document.body.dataset.view = v;
+  if (v === 'overview') requestAnimationFrame(() => renderHourHeatmap());   // canvas needs a visible size
   document.querySelectorAll('.view-switch a').forEach(a => {
     a.classList.toggle('on', a.dataset.view === v);
     a.setAttribute('aria-current', a.dataset.view === v ? 'page' : 'false');
@@ -3118,6 +3120,7 @@ function _fmtHour(h) { const s = h < 12 ? 'am' : 'pm'; const x = h % 12 === 0 ? 
 function renderHourHeatmap(activityLog) {
   const host = document.getElementById('hourHeatmap');
   if (!host) return;
+  activityLog = activityLog || getActivityLog();
   const pad = n => String(n).padStart(2, '0');
   const dayKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -3150,16 +3153,11 @@ function renderHourHeatmap(activityLog) {
   const dayLabel = d => dayKey(d) === todayKey ? 'Today'
     : d.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + d.getDate();
 
-  // Weather-map style: one continuous colour band per day (stops at each hour's centre), the bands
-  // stacked flush and blurred together; an invisible 7×24 grid on top keeps the per-hour tooltips.
-  const C = lv => `var(--hh${lv})`;
-  let bands = '', hits = '', labels = '';
+  // Weather-map (filled contour) style is drawn on a canvas by _drawHourField(); an invisible 7×24 grid
+  // on top keeps the per-hour tooltips.
+  let hits = '', labels = '';
   for (const d of days) {
     const k = dayKey(d), isToday = k === todayKey, row = grid[k];
-    const stops = [`${C(level(row[0].n))} 0%`]
-      .concat(row.map((c, h) => `${C(level(c.n))} ${((h + 0.5) / 24 * 100).toFixed(2)}%`))
-      .concat([`${C(level(row[23].n))} 100%`]);
-    bands += `<div class="hh-band" style="background:linear-gradient(90deg, ${stops.join(', ')})"></div>`;
     labels += `<span class="hh-day${isToday ? ' is-today' : ''}">${escapeHtml(dayLabel(d))}</span>`;
     row.forEach((c, h) => {
       const future = isToday && h > nowH, current = isToday && h === nowH;
@@ -3177,10 +3175,10 @@ function renderHourHeatmap(activityLog) {
     <div class="hh-plot">
       <div class="hh-axis">${axis}</div>
       <div class="hh-field">
-        <div class="hh-bands">${bands}</div>
+        <canvas class="hh-canvas" aria-hidden="true"></canvas>
         <div class="hh-hits">${hits}</div>
       </div>
-      <div class="hh-legend"><span>Less</span><i style="background:var(--hh0)"></i><i style="background:var(--hh1)"></i><i style="background:var(--hh2)"></i><i style="background:var(--hh3)"></i><i style="background:var(--hh4)"></i><span>More</span></div>
+      <div class="hh-legend"><span>Less</span>${[0,1,2,3,4,5,6,7,8].map(i => `<i style="background:var(--hh${i})"></i>`).join('')}<span>More</span></div>
     </div>`;
 
   host.innerHTML = `
@@ -3189,6 +3187,65 @@ function renderHourHeatmap(activityLog) {
       <span class="hh-summary">${total ? `${total} item${total > 1 ? 's' : ''} on ${activeDays} day${activeDays > 1 ? 's' : ''} · most active around <b>${_fmtHour(peak)}</b>` : 'Nothing logged in the last 7 days yet'}</span>
     </div>
     <div class="hh-wrap">${cells}</div>`;
+  _drawHourField(host.querySelector('.hh-canvas'), days.map(d => grid[dayKey(d)].map(c => c.n)));
+}
+
+/**
+ * Filled-contour "weather map": counts (7 × 24) → smooth field (Gaussian spread over neighbouring hours
+ * and days) on a coarse grid → bilinear interpolation per pixel → quantised into 9 flat levels from the
+ * yearly heatmap palette (--hh0…--hh8), with thin darker contour lines where levels meet. No blur.
+ */
+function _drawHourField(canvas, counts) {
+  if (!canvas) return;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  if (!W || !H) return;                                     // hidden (Study view) — redrawn when Overview shows
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  const ctx = canvas.getContext('2d');
+  const css = getComputedStyle(canvas);
+  const palette = Array.from({ length: 9 }, (_, i) => {
+    const c = css.getPropertyValue('--hh' + i).trim() || '#ccc';
+    const m = c.match(/^#([0-9a-f]{6})$/i); const n = m ? parseInt(m[1], 16) : 0xcccccc;
+    return [n >> 16 & 255, n >> 8 & 255, n & 255];
+  });
+  const ROWS = counts.length, COLS = 24;
+  // coarse field: 4 samples per hour, 4 per day, Gaussian kernel (σ ≈ 0.85 h, 0.6 day)
+  const GX = COLS * 4, GY = ROWS * 4, sx = 0.85, sy = 0.6;
+  const field = new Float32Array(GX * GY); let fmax = 0;
+  for (let gy = 0; gy < GY; gy++) for (let gx = 0; gx < GX; gx++) {
+    const x = (gx + 0.5) / 4, y = (gy + 0.5) / 4; let v = 0;     // in cell units
+    for (let r = 0; r < ROWS; r++) {
+      const dy = (y - (r + 0.5)) / sy; if (dy * dy > 16) continue;
+      const row = counts[r];
+      for (let h = 0; h < COLS; h++) {
+        const n = row[h]; if (!n) continue;
+        const dx = (x - (h + 0.5)) / sx; if (dx * dx > 16) continue;
+        v += n * Math.exp(-0.5 * (dx * dx + dy * dy));
+      }
+    }
+    field[gy * GX + gx] = v; if (v > fmax) fmax = v;
+  }
+  const img = ctx.createImageData(canvas.width, canvas.height), px = img.data;
+  const lv = new Uint8Array(canvas.width * canvas.height);
+  for (let py = 0; py < canvas.height; py++) {
+    const fy = Math.min(GY - 1.001, Math.max(0, (py + 0.5) / canvas.height * GY - 0.5));
+    const y0 = Math.floor(fy), ty = fy - y0;
+    for (let pxl = 0; pxl < canvas.width; pxl++) {
+      const fx = Math.min(GX - 1.001, Math.max(0, (pxl + 0.5) / canvas.width * GX - 0.5));
+      const x0 = Math.floor(fx), tx = fx - x0, i0 = y0 * GX + x0;
+      const v = (field[i0] * (1 - tx) + field[i0 + 1] * tx) * (1 - ty) + (field[i0 + GX] * (1 - tx) + field[i0 + GX + 1] * tx) * ty;
+      const t = fmax ? v / fmax : 0;
+      lv[py * canvas.width + pxl] = t < 0.08 ? 0 : Math.min(8, 1 + Math.floor(((t - 0.08) / 0.92) * 8));
+    }
+  }
+  for (let i = 0, n = lv.length; i < n; i++) {
+    const L = lv[i], c = palette[L];
+    // contour line: darken where the level differs from the right or lower neighbour
+    const edge = (i % canvas.width < canvas.width - 1 && lv[i + 1] !== L) || (i + canvas.width < n && lv[i + canvas.width] !== L);
+    const k = edge ? 0.78 : 1;
+    px[i * 4] = c[0] * k; px[i * 4 + 1] = c[1] * k; px[i * 4 + 2] = c[2] * k; px[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
 }
 
 function renderHeatmap(activityLog) {

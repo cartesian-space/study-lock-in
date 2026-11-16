@@ -3939,3 +3939,15 @@ body[data-view="study"] #hourHeatmap { display: none !important; }
           mask-image: linear-gradient(to bottom, transparent 0%, #000 32%, #000 68%, transparent 100%);
 }
 @media (max-width: 768px) { .hh-bands { grid-template-rows: repeat(7, 1fr); filter: none; } }
+
+/* Study hours: filled-contour canvas (no blur) — 9-level palette shared with the yearly heatmap */
+:root, [data-theme="light"] {
+  --hh0: #F1F0EA; --hh1: #9be9a8; --hh2: #40c463; --hh3: #30a14e; --hh4: #216e39;
+  --hh5: #f0c420; --hh6: #e8961e; --hh7: #d94e1a; --hh8: #b81c1c;
+}
+[data-theme="dark"] {
+  --hh0: #23271F; --hh1: #0e4429; --hh2: #006d32; --hh3: #26a641; --hh4: #39d353;
+  --hh5: #f0c420; --hh6: #e8961e; --hh7: #d94e1a; --hh8: #b81c1c;
+}
+.hh-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hh-legend i { width: 14px; }
