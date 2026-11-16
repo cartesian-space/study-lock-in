@@ -4072,3 +4072,36 @@ html body { background: var(--bg-primary); }
 .study-layout .day-nav .day-pill:not(.active):focus-visible { opacity: 1; }
 .study-layout .day-nav .add-day-pill { opacity: 0.6; }
 .study-layout .day-nav .add-day-pill:hover { opacity: 1; }
+
+/* =====================================================================
+   ZEN MODE — spotlight one task; dim the rest (replaces old block rules)
+   ===================================================================== */
+.dim-mode .study-main .block-card.section-card,
+.dim-mode .study-main .block-card.section-card:hover {
+  opacity: 1; filter: none; transform: none; box-shadow: none; border-color: transparent;
+}
+.dim-mode .study-main .block-card.section-card .task-text { -webkit-text-fill-color: currentColor; background: none; animation: none; }
+.dim-mode .section-card .task-item {
+  opacity: 0.28; filter: blur(0.6px) grayscale(0.35);
+  transition: opacity 0.35s ease, filter 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
+}
+.dim-mode .section-card .task-item:hover { opacity: 0.7; filter: none; }
+.dim-mode .section-card .task-item.zen-focus {
+  opacity: 1; filter: none; transform: scale(1.005);
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 4px var(--accent-dim), var(--shadow-md);
+}
+.dim-mode .section-card .task-item.zen-focus .task-tags::before {
+  content: 'Focus'; display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 999px;
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  background: var(--accent); color: var(--accent-text);
+}
+.dim-mode .study-layout .day-nav,
+.dim-mode .study-main .day-header,
+.dim-mode .journal-section { opacity: 0.3; transition: opacity 0.35s ease; }
+.dim-mode .study-layout .day-nav:hover,
+.dim-mode .study-main .day-header:hover,
+.dim-mode .journal-section:hover { opacity: 1; }
+/* zen dimming must also beat the completed-task style */
+html.dim-mode .section-card .task-item:not(.zen-focus) { opacity: 0.28; filter: blur(0.6px) grayscale(0.35); }
+html.dim-mode .section-card .task-item:not(.zen-focus):hover { opacity: 0.7; filter: none; }

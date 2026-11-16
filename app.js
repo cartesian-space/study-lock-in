@@ -143,12 +143,41 @@ function toggleDimMode() {
   if (btn) btn.classList.toggle('active', dimMode);
   // Toggle zen reminders only
   if (dimMode) startZenReminder(); else stopZenReminder();
+  if (dimMode) applyZenFocus({ scroll: true }); else clearZenFocus();
 }
-function setFocusedBlock(blockCard) {
+function setFocusedBlock() { /* legacy no-op: zen focus is per task now (applyZenFocus) */ }
+
+// ── Zen mode: spotlight ONE task; everything else is dimmed ──────────
+let _zenTaskId = null;
+function clearZenFocus() { document.querySelectorAll('.task-item.zen-focus').forEach(t => t.classList.remove('zen-focus')); }
+/** Highlight the chosen task (or the first unfinished one in the open section). */
+function applyZenFocus({ taskId, scroll = false } = {}) {
   if (!dimMode) return;
-  document.querySelectorAll('.block-card.focused').forEach(el => el.classList.remove('focused'));
-  if (blockCard) blockCard.classList.add('focused');
+  const items = [...document.querySelectorAll('#dayPanels .task-item')];
+  if (!items.length) return;
+  if (taskId) _zenTaskId = taskId;
+  let target = items.find(t => t.dataset.task === _zenTaskId);
+  if (!target) target = items.find(t => !t.classList.contains('done')) || items[0];
+  _zenTaskId = target.dataset.task;
+  clearZenFocus();
+  target.classList.add('zen-focus');
+  if (scroll) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
+/** After ticking the spotlighted task, move on to the next unfinished one. */
+function advanceZenFocus(fromTaskId) {
+  if (!dimMode || fromTaskId !== _zenTaskId) return;
+  const items = [...document.querySelectorAll('#dayPanels .task-item')];
+  const i = items.findIndex(t => t.dataset.task === fromTaskId);
+  const next = items.slice(i + 1).find(t => !t.classList.contains('done')) || items.find(t => !t.classList.contains('done'));
+  if (next) applyZenFocus({ taskId: next.dataset.task, scroll: true });
+}
+// Clicking anywhere on a task card (not its buttons/links) moves the spotlight there.
+document.addEventListener('click', e => {
+  if (!dimMode) return;
+  const item = e.target.closest('#dayPanels .task-item');
+  if (!item || e.target.closest('a, button, input, textarea, .task-menu')) return;
+  applyZenFocus({ taskId: item.dataset.task });
+});
 if (dimMode) document.documentElement.classList.add('dim-mode');
 if (musicOn) zenAudio.start();
 
@@ -1660,6 +1689,8 @@ function renderActivePanel() {
 
   html += '</div></div></div></div>';
   container.innerHTML = html;
+  if (container.dataset.day !== day.id) { container.dataset.day = day.id; _zenTaskId = null; }
+  applyZenFocus();
 }
 
 /**
@@ -2106,7 +2137,6 @@ function toggleTask(taskId, checkbox) {
     postEvent({ op: 'set', k: 'startDate', v: state.startDate });
   }
   const item = checkbox.closest('.task-item');
-  setFocusedBlock(item.closest('.block-card'));
   item.classList.toggle('done', checkbox.checked);
   updateStats();
   if (checkbox.checked) {
@@ -2116,6 +2146,7 @@ function toggleTask(taskId, checkbox) {
     if (taskText) dropTrophy(taskText.textContent.trim());
     const dayId = findDayForTask(taskId);
     if (dayId && isDayComplete(dayId)) { fireDayComplete(); showToast('🎉 Section complete!'); }
+    advanceZenFocus(taskId);
   } else {
     // Remove from trophy pile when unchecked
     const taskText = item.querySelector('.task-text');
