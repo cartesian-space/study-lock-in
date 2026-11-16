@@ -1282,23 +1282,6 @@ function renderApp() {
     <section class="journal-section" id="journalSection"></section>
     <footer class="footer"><p>${escapeHtml(meta.title || 'Study Tracker')} · Data saved locally · <span class="editable footer-edit" onclick="editMeta('title', this.closest('.footer').querySelector('p'))" title="Click to edit">✏️</span></p></footer>
 
-    <nav class="bottom-nav" id="bottomNav" aria-label="Sections">
-      <button class="bottom-nav-item active" data-target="statsGrid" onclick="bottomNavGo('statsGrid')" title="Overview">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span>
-      </button>
-      <button class="bottom-nav-item" data-target="activityHeatmap" onclick="bottomNavGo('activityHeatmap')" title="Activity">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Activity</span>
-      </button>
-      <button class="bottom-nav-item" data-target="syllabiMap" onclick="bottomNavGo('syllabiMap')" title="Syllabi map">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="12" r="2"/><path d="M7 6h4a4 4 0 0 1 4 4M7 18h4a4 4 0 0 0 4-4M15 12h2"/></svg><span>Map</span>
-      </button>
-      <button class="bottom-nav-item" data-target="dayPanels" onclick="bottomNavGo('dayPanels')" title="Today's tasks">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Tasks</span>
-      </button>
-      <button class="bottom-nav-item" data-target="journalSection" onclick="bottomNavGo('journalSection')" title="Journal">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg><span>Journal</span>
-      </button>
-    </nav>
   `;
 
   // Bind static events
@@ -1324,44 +1307,6 @@ function renderApp() {
     if (h) window._headerObserver.observe(h);
   }
 }
-
-// ===== BOTTOM NAV (phones) =====
-function setBottomNavActive(targetId) {
-  document.querySelectorAll('.bottom-nav-item').forEach(btn =>
-    btn.classList.toggle('active', btn.dataset.target === targetId));
-}
-
-function bottomNavGo(targetId) {
-  const el = document.getElementById(targetId);
-  if (!el) return;
-  setBottomNavActive(targetId);
-  window._bottomNavLockUntil = Date.now() + 800; // don't let the scroll-spy flicker mid-scroll
-  if (targetId === 'statsGrid') window.scrollTo({ top: 0, behavior: 'smooth' });
-  else el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-/** Scroll-spy: highlight the section currently occupying the upper part of the screen. */
-function _syncBottomNavToScroll() {
-  if (Date.now() < (window._bottomNavLockUntil || 0)) return;
-  const items = [...document.querySelectorAll('.bottom-nav-item')];
-  if (!items.length || getComputedStyle(document.getElementById('bottomNav')).display === 'none') return;
-  const probe = window.innerHeight * 0.35;
-  let current = items[0].dataset.target;
-  for (const btn of items) {
-    const el = document.getElementById(btn.dataset.target);
-    if (el && el.getBoundingClientRect().top <= probe) current = btn.dataset.target;
-  }
-  if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) {
-    current = items[items.length - 1].dataset.target; // bottom of page → last section
-  }
-  setBottomNavActive(current);
-}
-let _bottomNavTicking = false;
-window.addEventListener('scroll', () => {
-  if (_bottomNavTicking) return;
-  _bottomNavTicking = true;
-  requestAnimationFrame(() => { _bottomNavTicking = false; _syncBottomNavToScroll(); });
-}, { passive: true });
 
 // ===== RENDER: DAY NAVIGATION =====
 function renderDayNav() {
@@ -1566,24 +1511,31 @@ function renderTask(task, dayId) {
     commentHtml += '</div>';
   }
 
+  const ICON = {
+    done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    comment: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
+  };
+
+  // Content uses the full row width; all actions (incl. marking done) live in a labelled toolbar underneath.
   return `<div class="task-item ${doneClass} ${isComposing ? 'commenting' : ''}" data-task="${task.id}" id="task-${task.id}">
-    <input type="checkbox" class="task-checkbox" ${checked} onchange="toggleTask('${task.id}', this)" onclick="event.stopPropagation()">
     <div class="task-info">
       ${task.bonus ? '<span class="task-bonus-tag" title="Bonus — optional, does not block section completion">★ bonus</span>' : ''}<span class="task-text">${formatTaskText(task.text)}</span>
       ${resourceHtml}
     </div>
-    <div class="task-actions">
-      <button class="comment-trigger ${hasComments}" onclick="event.preventDefault(); event.stopPropagation(); toggleCommentCard('${task.id}')" title="Comment">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        <span class="comment-count">${commentCount || ''}</span>
+    <div class="task-toolbar">
+      <label class="task-btn task-done-btn" title="Mark done / undo" aria-label="Mark done / undo" onclick="event.stopPropagation()">
+        <input type="checkbox" class="task-checkbox" ${checked} onchange="toggleTask('${task.id}', this)">
+        ${ICON.done}<span class="when-todo">Mark done</span><span class="when-done">Done</span>
+      </label>
+      <button class="task-btn comment-trigger ${hasComments}" onclick="event.preventDefault(); event.stopPropagation(); toggleCommentCard('${task.id}')" title="Comment" aria-label="Comment">
+        ${ICON.comment}<span class="lbl-comment">Comment</span><span class="comment-count">${commentCount || ''}</span>
       </button>
-      <button class="task-action-btn copy-btn" onclick="event.stopPropagation(); copyTaskText('${task.id}', this)" title="Copy text">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-      </button>
-      <button class="task-action-btn edit-btn" onclick="event.stopPropagation(); editTaskText('${task.id}')" title="Edit task">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-      </button>
-      <button class="task-action-btn danger" onclick="event.stopPropagation(); removeTask('${task.id}')" title="Delete task">🗑️</button>
+      <button class="task-btn copy-btn" onclick="event.stopPropagation(); copyTaskText('${task.id}', this)" title="Copy text" aria-label="Copy text">${ICON.copy}<span>Copy</span></button>
+      <button class="task-btn edit-btn" onclick="event.stopPropagation(); editTaskText('${task.id}')" title="Edit task" aria-label="Edit task">${ICON.edit}<span>Edit</span></button>
+      <button class="task-btn danger" onclick="event.stopPropagation(); removeTask('${task.id}')" title="Delete task" aria-label="Delete task">${ICON.trash}<span>Delete</span></button>
     </div>
     ${commentHtml}
   </div>`;

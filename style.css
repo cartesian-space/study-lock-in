@@ -2925,58 +2925,11 @@ body { letter-spacing: -0.005em; }
 .toast { background: var(--accent); color: var(--accent-text); }
 .footer { border-top: none; }
 
-/* ----- Bottom navigation (phones only) ----- */
-.bottom-nav { display: none; }
-
 @media (max-width: 768px) {
-  .bottom-nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 4px;
-    position: fixed;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: calc(12px + env(safe-area-inset-bottom));
-    width: min(420px, calc(100vw - 24px));
-    padding: 7px;
-    background: #2F3A27;
-    border-radius: var(--radius-pill);
-    box-shadow: 0 12px 30px rgba(30, 35, 22, 0.35);
-    z-index: 950;
-  }
-  [data-theme="dark"] .bottom-nav { background: #3A4530; }
-
-  .bottom-nav-item {
-    flex: 0 0 auto;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    height: 42px;
-    min-width: 42px;
-    padding: 0 12px;
-    border: none;
-    border-radius: var(--radius-pill);
-    background: transparent;
-    color: rgba(240, 238, 228, 0.6);
-    font-size: 0.78rem;
-    font-weight: 600;
-  }
-  .bottom-nav-item svg { width: 19px; height: 19px; flex-shrink: 0; }
-  .bottom-nav-item span { display: none; }
-  .bottom-nav-item.active {
-    background: var(--accent-soft);
-    color: #23271F;
-    padding: 0 16px;
-  }
-  [data-theme="dark"] .bottom-nav-item.active { color: #ECEBE3; }
-  .bottom-nav-item.active span { display: inline; }
-
-  /* room for the floating nav */
-  #app { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
-  .trophy-pile { bottom: calc(76px + env(safe-area-inset-bottom)); }
-  .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
+  /* bottom spacing for the home indicator (no bottom nav any more) */
+  #app { padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
+  .trophy-pile { bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .toast { bottom: calc(20px + env(safe-area-inset-bottom)); }
 
   /* sections scroll in below the sticky header + day-nav */
   #statsGrid, #activityHeatmap, #dayPanels, #journalSection {
@@ -3062,7 +3015,7 @@ button, a, input, select, textarea, .block-header, .day-pill {
   #app {
     padding-left: max(var(--page-pad), env(safe-area-inset-left));
     padding-right: max(var(--page-pad), env(safe-area-inset-right));
-    padding-bottom: calc(96px + env(safe-area-inset-bottom)); /* room for bottom nav */
+    padding-bottom: calc(28px + env(safe-area-inset-bottom));
   }
 
   /* iOS zooms the page when focusing inputs under 16px */
@@ -3219,14 +3172,14 @@ button, a, input, select, textarea, .block-header, .day-pill {
   .trophy-pile {
     width: min(200px, 60vw);
     max-height: 32vh;
-    bottom: calc(76px + env(safe-area-inset-bottom));
+    bottom: calc(16px + env(safe-area-inset-bottom));
   }
   .trophy-header, .trophy-chips { margin-left: 8px; margin-right: 8px; }
   .trophy-chips { max-height: 24vh; }
 
   /* Toast */
   .toast {
-    bottom: calc(80px + env(safe-area-inset-bottom));
+    bottom: calc(20px + env(safe-area-inset-bottom));
     max-width: calc(100vw - 32px);
     width: max-content;
     text-align: center;
@@ -3626,4 +3579,74 @@ button, a, input, select, textarea, .block-header, .day-pill {
 .logo-icon svg { width: 100%; height: 100%; }
 @media (max-width: 768px) {
   .logo-icon { width: 40px; height: 40px; padding: 9px; }
+}
+
+/* ── Task rows: full-width content + labelled action toolbar (incl. Mark done) ── */
+.task-item { display: block; }
+.task-item .task-info { width: 100%; }
+.task-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-color);
+}
+.task-btn {
+  position: relative; display: inline-flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 11px; border-radius: var(--radius-pill);
+  border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-secondary);
+  font-family: var(--font-body); font-size: 0.74rem; font-weight: 500; line-height: 1; cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.task-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+.task-btn:hover { border-color: var(--border-hover); color: var(--text-primary); background: var(--bg-surface); }
+.task-btn.danger { margin-left: auto; }
+.task-btn.danger:hover { color: var(--red); border-color: var(--red); background: var(--red-dim); }
+.task-btn.copied { color: var(--green); border-color: var(--green); }
+.task-btn .comment-count:empty { display: none; }
+.task-btn .comment-count { font-family: var(--font-mono); font-size: 0.68rem; background: var(--accent-dim); color: var(--accent); padding: 1px 6px; border-radius: var(--radius-pill); }
+.task-btn.comment-trigger.has-comments { color: var(--accent); }
+
+/* Mark done: the real checkbox covers the button (keeps keyboard, burst origin and toggleTask) */
+.task-done-btn .task-checkbox {
+  position: absolute; inset: 0; width: 100% !important; height: 100% !important; margin: 0 !important;
+  opacity: 0; cursor: pointer; border: none !important; background: none !important; animation: none !important;
+}
+.task-done-btn .when-done { display: none; }
+.task-done-btn { color: var(--text-primary); border-color: var(--border-hover); }
+.task-done-btn:hover { border-color: var(--accent); color: var(--accent); }
+.task-done-btn:has(.task-checkbox:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.task-item.done .task-done-btn { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.task-item.done .task-done-btn .when-todo { display: none; }
+.task-item.done .task-done-btn .when-done { display: inline; }
+.task-item.done .task-done-btn svg { animation: checkPop 0.35s ease; }
+@keyframes checkPop { 0% { transform: scale(0.4); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
+/* Phones: all five actions on ONE row — equal-width buttons, icon above a short label */
+@media (max-width: 768px) {
+  .task-toolbar { flex-wrap: nowrap; gap: 6px; }
+  .task-btn {
+    flex: 1 1 0; min-width: 0; height: 50px; padding: 4px 2px;
+    flex-direction: column; justify-content: center; gap: 4px;
+    border-radius: 12px; font-size: 0.68rem;
+  }
+  .task-btn svg { width: 19px; height: 19px; }
+  .task-btn > span:not(.comment-count) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .task-btn.danger { margin-left: 0; }
+  .task-done-btn { font-weight: 600; }
+  .task-done-btn .when-todo { font-size: 0; }
+  .task-done-btn .when-todo::after { content: 'Done'; font-size: 0.68rem; }
+  .task-btn .comment-count { position: absolute; top: 3px; right: 6px; padding: 0 5px; font-size: 0.6rem; }
+}
+@media (max-width: 359px) {
+  .task-toolbar { gap: 4px; }
+  .task-btn { font-size: 0.6rem; letter-spacing: -0.01em; }
+  .task-done-btn .when-todo::after { font-size: 0.6rem; }
+}
+@media (max-width: 359px) {
+  .task-btn .lbl-comment { font-size: 0; }
+  .task-btn .lbl-comment::after { content: 'Note'; font-size: 0.6rem; }
+}
+/* Phones: icon-only task actions (labels stay available as tooltips / accessible names) */
+@media (max-width: 768px) {
+  .task-btn { height: 42px; gap: 0; }
+  .task-btn > span:not(.comment-count) { display: none; }
+  .task-btn svg { width: 20px; height: 20px; }
 }
