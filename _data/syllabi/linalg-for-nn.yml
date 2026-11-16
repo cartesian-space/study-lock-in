@@ -1,0 +1,400 @@
+# Study Lock-In syllabus — curriculum + progress. Exported by the app; edit freely.
+
+meta:
+  title: "Linear Algebra Nuances for Neural Networks"
+  subtitle: "The vector & matrix details that make neural nets click: four views of matmul, shapes and broadcasting, rank and null spaces, norms in high dimensions, projections, curvature, SVD, floating point, layer gradients, signal propagation and attention. Theory plus by-hand worksheets; assumes Math for ML Phase A."
+  status: "active"
+  short: "LinAlg NN"
+  color: "#3E6E7A"
+
+state:
+  theme: "dark"
+  active_section: "matmul-four-views"
+  journal_section: "matmul-four-views"
+
+sections:
+  - id: "matmul-four-views"
+    title: "Four Views of Matrix Multiply"
+    subtitle: "Rows·columns, column mixing, row mixing, sum of outer products — and which view each neural-net operation is secretly using"
+    requires:
+      - "math-for-ml/matrices"
+    tasks:
+      - text: "Watch: 3B1B Ch.3 — Linear transformations and matrices (~11 min). Keep one idea: a matrix is fully described by where it sends the basis vectors — its columns."
+        done: false
+        resources:
+          - label: "3B1B Ch.3 — Linear transformations"
+            url: "https://www.youtube.com/watch?v=kYB8IZa5AuE"
+      - text: "Theory — the four views. For C = AB (A is m×k, B is k×n): (1) Entry view: C[i,j] = (row i of A)·(column j of B) — one dot product per output entry. (2) Column view: column j of C = A·(column j of B) — a weighted mix of A's columns. (3) Row view: row i of C = (row i of A)·B — a weighted mix of B's rows. (4) Outer-product view: C = Σₖ (column k of A)(row k of B) — a sum of k rank-1 matrices. Write all four on one index card; every later section leans on them."
+        done: false
+      - text: "Worksheet — four views by hand. By hand, on paper, with A = [[1, 2], [3, 4], [0, 1]] (3×2) and B = [[2, 0, 1], [1, 3, -1]] (2×3): (1) Entry C[2,3] of C = AB as a single dot product. (2) Column 1 of AB as a combination of A's columns. (3) Row 3 of AB as a combination of B's rows. (4) Write AB as a sum of two outer products and give each one. (5) Assemble the full AB and check it against all of the above. ✔ Check: (1) row 2 of A · column 3 of B = [3, 4]·[1, -1] = -1; (2) 2·[1, 3, 0] + 1·[2, 4, 1] = [4, 10, 1]; (3) 0·[2, 0, 1] + 1·[1, 3, -1] = [1, 3, -1]; (4) [[2, 0, 1], [6, 0, 3], [0, 0, 0]] + [[2, 6, -2], [4, 12, -4], [1, 3, -1]]; (5) AB = [[4, 6, -1], [10, 12, -1], [1, 3, -1]]"
+        done: false
+      - text: "Worksheet — one layer, four ways. By hand, on paper: weights W = [[1, -1, 0], [2, 0, 1]] (2 outputs × 3 inputs), input x = [3, 1, 2]. (1) y = Wx via dot products — each output neuron 'template-matches' x against its row. (2) y as x₁·col₁ + x₂·col₂ + x₃·col₃ — each input feature writes its column into output space. (3) Dropout zeroes x₃. Which column disappears from the sum, and what is the new y? (4) A batch stores examples as rows: X = [[3, 1, 2], [0, 1, -1]]. Compute X·Wᵀ and say which view makes 'each row of the output is one example' obvious. ✔ Check: (1) y = [2, 8]; (2) 3·[1, 2] + 1·[-1, 0] + 2·[0, 1] = [2, 8]; (3) column 3 ([0, 1]) drops out; y = [2, 6]; (4) XWᵀ = [[2, 8], [-1, -1]] — the row view: row b of XWᵀ = (row b of X)·Wᵀ"
+        done: false
+      - text: "Code (NumPy, 10 min): Rebuild AB four ways — np.einsum('ik,kj->ij'), a loop of A @ B[:, j], a loop of A[i] @ B, and sum(np.outer(A[:, k], B[k]) for k in range(2)). Assert np.allclose for each against A @ B."
+        done: false
+      - text: "Reflect (journal): Which view do you reach for when thinking about (a) one neuron's activation, (b) what one input feature contributes, (c) the weight gradient summed over a batch? (Hint for c: it will turn out to be a sum of outer products — one per example.)"
+        done: false
+  - id: "shapes-conventions"
+    title: "Shapes, Layouts & Conventions"
+    subtitle: "Column vectors on paper, row-major batches in code: nn.Linear's (out, in) weight, x @ W.T + b, and the (n,) vs (n,1) trap"
+    tasks:
+      - text: "Read: PyTorch docs — nn.Linear. Note two facts: weight has shape (out_features, in_features), and the layer computes y = x Aᵀ + b on row-vector inputs."
+        done: false
+        resources:
+          - label: "PyTorch: nn.Linear"
+            url: "https://pytorch.org/docs/stable/generated/torch.nn.Linear.html"
+      - text: "Theory — same map, two layouts. Textbooks write y = Wx with x a column (in×1). Code stores a batch as rows, X is (B × in), so the layer is Y = XWᵀ + b. Transposing Yᵀ = WXᵀ with (AB)ᵀ = BᵀAᵀ shows it is the same map applied to every column of Xᵀ. The bias b has shape (out,) and is broadcast to every row. When reading papers, always ask first: are vectors rows or columns here?"
+        done: false
+      - text: "Worksheet — transpose rules. By hand, on paper: (1) Expand (ABC)ᵀ. (2) A is 4×3 and B is 3×5: shapes of AB, BᵀAᵀ, AᵀA and AAᵀ. (3) A = [[1, 4], [0, 2]], x = [1, -1]: compute the scalar xᵀAx. (4) A scalar equals its own transpose, so xᵀAx = xᵀAᵀx. Use that to show only the symmetric part S = (A + Aᵀ)/2 matters; compute S and xᵀSx. (5) Show AᵀA is always symmetric in one line. ✔ Check: (1) CᵀBᵀAᵀ — order reverses; (2) 4×5, 5×4, 3×3, 4×4; (3) -1; (4) S = [[1, 2], [2, 2]], xᵀSx = -1; (5) (AᵀA)ᵀ = Aᵀ(Aᵀ)ᵀ = AᵀA"
+        done: false
+      - text: "Worksheet — shapes through an MLP. By hand, on paper: MNIST MLP 784 → 128 → 10, batch size 32, layers nn.Linear(784, 128) and nn.Linear(128, 10). (1) Shape of the first layer's weight and bias. (2) Shapes of X, H = XW₁ᵀ + b₁, and the logits. (3) Total parameter count. (4) You accidentally write X @ W₁ (no .T). Does it error? When would the same mistake run silently? ✔ Check: (1) weight (128, 784), bias (128,); (2) X (32, 784), H (32, 128), logits (32, 10); (3) 100,480 + 1,290 = 101,770; (4) it errors here — (32,784)@(128,784) mismatches — but for a square layer (in = out) it runs and silently uses Wᵀ"
+        done: false
+      - text: "Worksheet — the (n,) vs (n,1) trap. By hand, on paper: a has shape (3,) and c has shape (3, 1). (1) Shape of a + c? (2) Shapes of c @ c.T and c.T @ c. (3) Regression bug: y_pred has shape (4, 1) with values 1,2,3,4 and y has shape (4,) with values 1,2,3,4. What shape is (y_pred − y) before the mean? (4) What does ((y_pred − y)**2).mean() return, and what should it be? ✔ Check: (1) (3, 3) — broadcasting builds a full table; (2) (3, 3) outer and (1, 1) inner; (3) (4, 4); (4) 2.5 instead of 0 — every prediction is compared with every target"
+        done: false
+      - text: "Code (NumPy, 10 min): Reproduce the MSE bug, then fix it two ways (y_pred.squeeze(-1) and y[:, None]). Adopt the habit: assert x.shape == (B, D) at the top of every function you write in this syllabus."
+        done: false
+      - text: "Reflect (journal): List three shape bugs that would NOT raise an error (square weights, broadcasting, wrong reduction axis). How would you catch each one?"
+        done: false
+  - id: "broadcasting-einsum"
+    title: "Broadcasting & Einsum"
+    subtitle: "The rules that silently stretch tensors, and index notation that says exactly which axes are summed"
+    tasks:
+      - text: "Read: NumPy — Broadcasting. Memorise the rule: align shapes from the right; each pair of dims must be equal or one of them 1; missing leading dims count as 1."
+        done: false
+        resources:
+          - label: "NumPy: Broadcasting"
+            url: "https://numpy.org/doc/stable/user/basics.broadcasting.html"
+      - text: "Read: Tim Rocktäschel — 'Einsum is all you need'. Every index that appears in the inputs but not the output is summed over."
+        done: false
+        resources:
+          - label: "Einsum is all you need"
+            url: "https://rockt.github.io/2018/04/30/einsum"
+          - label: "NumPy: einsum"
+            url: "https://numpy.org/doc/stable/reference/generated/numpy.einsum.html"
+      - text: "Worksheet — broadcast or error? By hand, on paper, give the result shape or 'error': (1) (8, 1, 6, 1) + (7, 1, 5). (2) (5, 4) + (4,). (3) (5, 4) + (5,). (4) Softmax over logits Z of shape (32, 10): Z − Z.max(axis=1). (5) Same with keepdims=True. (6) Standardising features of X (100, 3): which axis do you take the mean over, and what shape is it? ✔ Check: (1) (8, 7, 6, 5); (2) (5, 4) — b added to every row; (3) error — 4 vs 5 on the right; (4) error — (32, 10) vs (32,); (5) (32, 10) — max has shape (32, 1), one per row; (6) axis=0, shape (3,) — one mean per feature, broadcast down the rows"
+        done: false
+      - text: "Worksheet — einsum by hand. By hand, on paper: write the einsum string for (1) matrix product AB, (2) batched matmul of (b, i, k) with (b, k, j), (3) attention scores from Q (B, H, T, D) and K (B, H, S, D), (4) trace, (5) outer product of two vectors, (6) squared L2 norm of every row of X. Then with A = [[1, 2], [3, 4]] evaluate (7) einsum('ii->', A), (8) einsum('ij->j', A), (9) einsum('ij,ij->', A, A). ✔ Check: (1) 'ik,kj->ij'; (2) 'bik,bkj->bij'; (3) 'bhtd,bhsd->bhts'; (4) 'ii->'; (5) 'i,j->ij'; (6) 'ij,ij->i'; (7) 5; (8) [4, 6] — column sums; (9) 30 — squared Frobenius norm"
+        done: false
+      - text: "Code (NumPy, 15 min): Compute multi-head attention scores two ways — einsum('bhtd,bhsd->bhts', Q, K) and Q @ K.transpose(0, 1, 3, 2) — with B=2, H=4, T=S=5, D=8. Assert they match. Then reshape a (B, T, H·D) tensor into heads and back, and assert you get the original."
+        done: false
+      - text: "Reflect (journal): Broadcasting is convenient and dangerous. Write your personal rule for when to use an explicit [:, None] or keepdims=True instead of trusting it."
+        done: false
+  - id: "product-zoo"
+    title: "Hadamard, Outer, Diagonal & Trace"
+    subtitle: "Elementwise vs matrix products, rank-1 builders, diagonal scaling and the trace — the small operations inside every layer"
+    tasks:
+      - text: "Theory — the product zoo. (1) Hadamard A ⊙ B: elementwise, shapes must match (or broadcast). Used for gates (LSTM, GLU/SwiGLU), dropout masks, and backprop through elementwise activations. (2) Outer uvᵀ: every matrix of rank 1 looks like this. (3) diag(d)·A scales the rows of A; A·diag(d) scales its columns — and diag(d)x = d ⊙ x. (4) Frobenius inner product ⟨A, B⟩ = Σᵢⱼ AᵢⱼBᵢⱼ = tr(AᵀB): a dot product of two matrices flattened. (5) Cyclic trace rule: tr(ABC) = tr(BCA) = tr(CAB)."
+        done: false
+      - text: "Worksheet — compare the products. By hand, on paper: A = [[1, 2], [3, 4]], B = [[0, 1], [1, 0]]. (1) A ⊙ B. (2) AB. (3) BA — describe in words what B did to A in each case. (4) ⟨A, B⟩ = tr(AᵀB). (5) tr(AB) and tr(BA). ✔ Check: (1) [[0, 2], [3, 0]]; (2) [[2, 1], [4, 3]]; (3) [[3, 4], [1, 2]] — on the right B swaps columns, on the left it swaps rows; (4) 5; (5) both 5"
+        done: false
+      - text: "Worksheet — scaling and masks. By hand, on paper: (1) d = [2, 3], A = [[1, 2], [3, 4]]: compute diag(d)A and A·diag(d). (2) Inverted dropout with p = 0.25: activations h = [2, 5, -1, 4], mask = [1, 0, 1, 1]. Compute h ⊙ mask / (1 − p). (3) Why divide by (1 − p)? (4) An elementwise activation's Jacobian is diagonal. Backprop computes diag(σ′(z))ᵀ g — rewrite that without the matrix. ✔ Check: (1) [[2, 4], [9, 12]] and [[2, 6], [6, 12]]; (2) [2.667, 0, -1.333, 5.333]; (3) keeps the expected value of each activation unchanged, so nothing has to change at test time; (4) σ′(z) ⊙ g — O(n) work instead of O(n²)"
+        done: false
+      - text: "Worksheet — rank-1 and block structure. By hand, on paper: (1) u = [1, 2], v = [3, 0, 1]: compute uvᵀ and its rank. (2) Why is every column of uvᵀ a multiple of u? (3) A 'grouped' linear layer applies W₁ to the first half of x and W₂ to the second half. Write the full weight as one block matrix. (4) If each block is 64×64 and there are 8 groups, how many parameters vs a dense 512×512 layer? ✔ Check: (1) [[3, 0, 1], [6, 0, 2]], rank 1; (2) column j is vⱼ·u; (3) [[W₁, 0], [0, W₂]] — block-diagonal; (4) 32,768 vs 262,144 — 8× fewer"
+        done: false
+      - text: "Code (NumPy, 10 min): Verify every answer. Then check tr(ABC) = tr(CAB) ≠ tr(ACB) on random 3×3 matrices, and that np.sum(A * B) equals np.trace(A.T @ B)."
+        done: false
+      - text: "Reflect (journal): Which operation is a neural net mostly made of — and where exactly does the Hadamard product appear in the forward and backward passes?"
+        done: false
+  - id: "composition-nonlinearity"
+    title: "Composition & Why Nonlinearity"
+    subtitle: "Stacked linear layers collapse into one; bottlenecks cap the rank; affine maps hide a linear map one dimension up"
+    tasks:
+      - text: "Watch: 3B1B Ch.4 — Matrix multiplication as composition (~10 min). Watch for why the right-most matrix acts first."
+        done: false
+        resources:
+          - label: "3B1B Ch.4 — Composition"
+            url: "https://www.youtube.com/watch?v=XkY2DOUCWMU"
+      - text: "Read: Goodfellow et al., Deep Learning §6.1 'Example: Learning XOR'. Follow the hand-built solution with pen in hand."
+        done: false
+        resources:
+          - label: "Deep Learning book — Ch.6 MLPs"
+            url: "https://www.deeplearningbook.org/contents/mlp.html"
+      - text: "Worksheet — collapsing layers. By hand, on paper: W₁ = [[1, 2], [0, 1]], b₁ = [1, 0], W₂ = [[1, 0], [-1, 1]], b₂ = [0, 1]. (1) Write W₂(W₁x + b₁) + b₂ as a single Wx + b: give W and b. (2) Compute W₁W₂ too — is it equal to W₂W₁? (3) 100 linear layers with no activation in between have the expressive power of how many layers? ✔ Check: (1) W = W₂W₁ = [[1, 2], [-1, -1]], b = W₂b₁ + b₂ = [1, 0]; (2) W₁W₂ = [[-1, 2], [-1, 1]] — not equal; order matters; (3) one"
+        done: false
+      - text: "Worksheet — XOR needs a bend. By hand, on paper: (1) Argue no single linear unit sign(w·x + b) solves XOR: write the four inequalities and add them in pairs to reach a contradiction. (2) Hidden layer h = ReLU(Wx + c) with W = [[1, 1], [1, 1]], c = [0, -1], output w·h with w = [1, -2]. Compute h and the output for x = [0,0], [0,1], [1,0], [1,1]. (3) What did the ReLU do geometrically to make this possible? ✔ Check: (1) b < 0 and w₁+w₂+b < 0 sum to w₁+w₂+2b < 0, but w₁+b > 0 and w₂+b > 0 sum to w₁+w₂+2b > 0 — contradiction; (2) h = [0, 0], [1, 0], [1, 0], [2, 1] → outputs 0, 1, 1, 0; (3) it folded the plane along a line, so [0,1] and [1,0] land on the same point and the classes become linearly separable"
+        done: false
+      - text: "Worksheet — bottlenecks and homogeneous coordinates. By hand, on paper: (1) A linear autoencoder 5 → 2 → 5 computes W₂W₁ with W₁ 2×5 and W₂ 5×2. Max rank of W₂W₁? (2) rank(AB) ≤ min(rank A, rank B). Check it with A = [[1, 2], [2, 4]] and B = I. (3) Affine map: W = [[2, 0], [0, 3]], b = [1, -1], x = [1, 1]. Compute Wx + b. (4) Build the 3×3 matrix [[W, b], [0, 0, 1]] and multiply by [x; 1]. ✔ Check: (1) 2 — at best it learns a projection onto a 2-D subspace (that's PCA); (2) rank(AB) = 1, because A's rows are parallel; (3) [3, 2]; (4) [[2, 0, 1], [0, 3, -1], [0, 0, 1]] · [1, 1, 1] = [3, 2, 1] — an affine map is linear one dimension up"
+        done: false
+      - text: "Code (NumPy, 15 min): Stack 5 random linear layers and verify a single matrix reproduces the output exactly. Insert np.maximum(·, 0) between them and show no single matrix can (fit one with np.linalg.lstsq and look at the residual)."
+        done: false
+      - text: "Read: Saxe et al. (2013) — Exact solutions to the nonlinear dynamics of learning in deep linear networks. Abstract and intro only: even deep linear nets have non-trivial training dynamics despite their trivial expressive power."
+        done: false
+        bonus: true
+        resources:
+          - label: "Saxe et al. — Deep linear networks"
+            url: "https://arxiv.org/abs/1312.6120"
+      - text: "Reflect (journal): If depth without nonlinearity adds nothing to expressiveness, what exactly does each ReLU 'buy'? Use the word 'fold' or 'piecewise'."
+        done: false
+  - id: "four-subspaces"
+    title: "Rank & the Four Subspaces"
+    subtitle: "Column space = what a layer can output, null space = what it forgets; rank–nullity, and why low-rank updates (LoRA) work"
+    requires:
+      - "math-for-ml/determinant"
+    tasks:
+      - text: "Watch: 3B1B Ch.7 — Inverse matrices, column space and null space (~12 min)."
+        done: false
+        resources:
+          - label: "3B1B Ch.7 — Column & null space"
+            url: "https://www.youtube.com/watch?v=uQhTuRlWMxw"
+      - text: "Watch: MIT 18.06 (Strang) Lecture 10 — The four fundamental subspaces (~49 min). Draw his big picture: row space ⊥ null space in the input, column space ⊥ left null space in the output."
+        done: false
+        resources:
+          - label: "MIT 18.06 L10 — Four subspaces"
+            url: "https://www.youtube.com/watch?v=nHlE7EgJFds"
+      - text: "Theory — for an m×n matrix W of rank r (a layer from ℝⁿ to ℝᵐ): column space (dim r) = every output the layer can produce. Null space (dim n − r) = input directions the layer maps to zero — information it destroys forever. Row space (dim r) = the input directions it actually reads. Left null space (dim m − r) = output directions it can never write. Rank–nullity: r + (n − r) = n. Whatever later layers do, they cannot recover what fell into the null space."
+        done: false
+      - text: "Worksheet — find the subspaces. By hand, on paper: A = [[1, 2, 3], [2, 4, 6], [1, 0, 1]]. (1) Rank of A (look for dependent rows). (2) A basis for the null space: solve Ax = 0. (3) A vector y with yᵀA = 0 (left null space). (4) Dimensions of all four subspaces, and check rank–nullity. ✔ Check: (1) 2 — row 2 = 2 × row 1; (2) [-1, -1, 1] (any multiple); (3) [2, -1, 0] — that's 2·row1 − row2 = 0; (4) column space 2 and left null 1 (in ℝ³ output), row space 2 and null space 1 (in ℝ³ input); 2 + 1 = 3"
+        done: false
+      - text: "Worksheet — what a layer forgets. By hand, on paper: W = [[1, 1, 0], [0, 0, 1]] maps ℝ³ → ℝ². (1) Find a nonzero x with Wx = 0. (2) Compute Wx for x = [3, 1, 5] and x′ = [1, 3, 5]. (3) What is x − x′, and why does that explain (2)? (4) Can any later layer tell these two inputs apart? ✔ Check: (1) [1, -1, 0] (any multiple); (2) both [4, 5]; (3) [2, -2, 0] — it lies in the null space; (4) no — they are identical from this layer on"
+        done: false
+      - text: "Worksheet — low rank & LoRA. By hand, on paper: (1) A full update ΔW for a 4096×4096 weight has how many parameters? (2) LoRA writes ΔW = BA with B 4096×8 and A 8×4096. Parameters? Ratio? (3) Max rank of BA? (4) Using the outer-product view, explain why any rank-r matrix is a sum of r outer products. ✔ Check: (1) 16,777,216; (2) 65,536 — 256× fewer; (3) 8; (4) BA = Σₖ (column k of B)(row k of A), with k = 1…r"
+        done: false
+      - text: "Read: LoRA paper — abstract, §4 and Figure 1. The bet: fine-tuning updates have low intrinsic rank."
+        done: false
+        bonus: true
+        resources:
+          - label: "LoRA (Hu et al., 2021)"
+            url: "https://arxiv.org/abs/2106.09685"
+      - text: "Code (NumPy, 10 min): np.linalg.matrix_rank(A); get a null-space basis from the SVD (rows of Vt whose singular value is ~0) and assert A @ v ≈ 0. Do it for A and W above."
+        done: false
+      - text: "Reflect (journal): Explain to a friend why a 512 → 64 → 512 bottleneck can never output more than a 64-dimensional family of vectors, however clever the later layers are."
+        done: false
+  - id: "norms-high-dim"
+    title: "Matrix Norms & High-Dimensional Geometry"
+    subtitle: "Spectral vs Frobenius norm, how much a layer can stretch, and why random high-dimensional vectors are almost orthogonal (hence √d in attention)"
+    tasks:
+      - text: "Theory — measuring a matrix. Frobenius ‖A‖_F = √(Σ Aᵢⱼ²): the size of A as a flat list of numbers (what weight decay penalises). Spectral ‖A‖₂ = max over x of ‖Ax‖/‖x‖: the most A can stretch any vector — the layer's worst-case gain, equal to the largest singular value. Always ‖A‖₂ ≤ ‖A‖_F. Key inequalities: ‖Ax‖ ≤ ‖A‖₂‖x‖ and ‖AB‖₂ ≤ ‖A‖₂‖B‖₂ — so a deep net's gain is bounded by the product of its layers' gains."
+        done: false
+      - text: "Worksheet — matrix norms. By hand, on paper: A = [[3, 0], [0, 1]], B = [[1, 1], [1, 1]]. (1) ‖A‖_F and ‖A‖₂ — for a diagonal matrix the max stretch is easy to see. (2) ‖B‖_F and ‖B‖₂ (hint: try x = [1, 1]/√2). (3) Check ‖Ax‖ ≤ ‖A‖₂‖x‖ for x = [1, 1]. (4) Compute AB, its spectral norm, and check ‖AB‖₂ ≤ ‖A‖₂‖B‖₂. ✔ Check: (1) √10 ≈ 3.162 and 3; (2) 2 and 2; (3) 3.162 ≤ 4.243; (4) AB = [[3, 3], [1, 1]], ‖AB‖₂ = √20 ≈ 4.472 ≤ 6"
+        done: false
+      - text: "Worksheet — concentration in high dimensions. By hand, on paper: x and y have d independent N(0, 1) entries. (1) E‖x‖² = ? so ‖x‖ ≈ ? For d = 512? (2) E[x·y] and Var(x·y)? (3) Then cos(x, y) ≈ x·y / d has standard deviation ≈ ? For d = 512? (4) Attention: q and k have unit-variance entries and d_k = 64. Standard deviation of q·k? What does dividing by √d_k do to it? (5) Why would unscaled scores hurt softmax training? ✔ Check: (1) d, so ‖x‖ ≈ √d ≈ 22.6; (2) 0 and d; (3) 1/√d ≈ 0.044 — random vectors are nearly orthogonal; (4) √64 = 8, scaled back to 1; (5) large scores saturate softmax into near one-hot, so gradients vanish"
+        done: false
+      - text: "Code (NumPy, 15 min): For d in [2, 10, 100, 1000, 10000], sample 1000 pairs of Gaussian vectors. Print mean |cosine| and the std of ‖x‖/√d. Watch both shrink like 1/√d."
+        done: false
+      - text: "Read: Attention Is All You Need §3.2.1 — the footnote on why dot products are scaled by 1/√d_k. It is exactly question (4)."
+        done: false
+        resources:
+          - label: "Attention Is All You Need"
+            url: "https://arxiv.org/abs/1706.03762"
+      - text: "Read: Anthropic — Toy Models of Superposition, the intro and first figures. Near-orthogonality lets a d-dimensional space hold far more than d features."
+        done: false
+        bonus: true
+        resources:
+          - label: "Toy Models of Superposition"
+            url: "https://transformer-circuits.pub/2022/toy_model/index.html"
+      - text: "Reflect (journal): Your 2-D and 3-D intuition says 'random directions are often similar'. Why is that wrong in 768 dimensions, and why does that make embeddings work?"
+        done: false
+  - id: "orthogonal-projections"
+    title: "Orthogonal Matrices & Projections"
+    subtitle: "Matrices that preserve length (QᵀQ = I), projection matrices (P² = P), and why orthogonal initialisation keeps deep signals alive"
+    tasks:
+      - text: "Watch: MIT 18.06 Lecture 17 — Orthogonal matrices and Gram–Schmidt (~50 min)."
+        done: false
+        resources:
+          - label: "MIT 18.06 L17 — Orthogonal matrices"
+            url: "https://www.youtube.com/watch?v=0MtwqhIwdrI"
+      - text: "Watch: MIT 18.06 Lecture 15 — Projections onto subspaces. Skip it if you already watched it in Math for ML; focus on the second half (projecting onto a plane)."
+        done: false
+        bonus: true
+        resources:
+          - label: "MIT 18.06 L15 — Projections"
+            url: "https://www.youtube.com/watch?v=Y_Ac6KiQ1t0"
+      - text: "Worksheet — orthogonal matrices. By hand, on paper: Q = [[0.6, -0.8], [0.8, 0.6]]. (1) Compute QᵀQ. (2) What is Q⁻¹ — with no elimination? (3) x = [3, 4]: compute Qx, ‖Qx‖ and ‖x‖. (4) det Q. Is [[1, 0], [0, -1]] orthogonal too, and what is its determinant? (5) Every singular value of Q is 1. Why does that make a deep stack of orthogonal layers keep both activations and gradients the same size? ✔ Check: (1) I; (2) Qᵀ; (3) Qx = [-1.4, 4.8], both norms 5; (4) 1 (a rotation) — yes, det −1 (a reflection); (5) every layer has gain exactly 1 in every direction, so the product of gains is 1 — nothing explodes or vanishes"
+        done: false
+      - text: "Worksheet — projection matrix. By hand, on paper: A = [[1, 0], [1, 1], [1, 2]] (its columns span a plane in ℝ³). (1) P = A(AᵀA)⁻¹Aᵀ — first compute AᵀA. (2) Verify P² = P and Pᵀ = P. (3) b = [6, 0, 0]: p = Pb, e = b − p; check Aᵀe = 0. (4) tr(P)? What does it count? (5) What does I − P project onto, and what is (I − P)b? ✔ Check: (1) AᵀA = [[3, 3], [3, 5]], P = (1/6)·[[5, 2, -1], [2, 2, 2], [-1, 2, 5]]; (2) yes — projecting twice changes nothing; (3) p = [5, 2, -1], e = [1, -2, 1]; (4) 2 = the dimension of the plane (rank); (5) onto the orthogonal complement (the line along [1, -2, 1]); (I − P)b = e"
+        done: false
+      - text: "Code (NumPy, 15 min): Q, _ = np.linalg.qr(np.random.randn(256, 256)) and assert Q.T @ Q ≈ I. Push a random vector through 50 layers of (a) Gaussian matrices scaled by 1/√256 and (b) random orthogonal matrices. Print ‖x‖ after each layer. Run (a) several times — its norm drifts randomly, (b) stays fixed exactly."
+        done: false
+      - text: "Reflect (journal): Least squares, PCA, attention-head 'reading' from the residual stream — all are projections. In one paragraph, describe what 'projecting onto a subspace' throws away and what it keeps."
+        done: false
+  - id: "symmetric-curvature"
+    title: "Symmetric Matrices, Quadratic Forms & Curvature"
+    subtitle: "The spectral theorem, positive (semi)definiteness, and how the Hessian's eigenvalues set the largest usable learning rate"
+    tasks:
+      - text: "Watch: 3B1B Ch.14 — Eigenvectors and eigenvalues (~17 min). Skip if it's fresh from Math for ML."
+        done: false
+        bonus: true
+        resources:
+          - label: "3B1B Ch.14 — Eigen"
+            url: "https://www.youtube.com/watch?v=PFDu9oVAE-g"
+      - text: "Theory — why symmetric matrices are special. Every real symmetric S = QΛQᵀ: real eigenvalues, orthonormal eigenvectors (the spectral theorem). So S rotates into its eigenbasis, scales each axis by λᵢ, and rotates back. The quadratic form f(x) = xᵀSx = Σ λᵢ(qᵢ·x)² is a bowl if all λ > 0 (positive definite), a flat-bottomed bowl if λ ≥ 0 (PSD), and a saddle if signs are mixed. Hessians, covariance matrices and Gram matrices XᵀX are all symmetric, and the last two are always PSD."
+        done: false
+      - text: "Worksheet — spectral theorem. By hand, on paper: S = [[2, 1], [1, 2]]. (1) Eigenvalues (solve det(S − λI) = 0). (2) Unit eigenvectors. (3) Check they are orthogonal. (4) Write S = λ₁q₁q₁ᵀ + λ₂q₂q₂ᵀ and verify by adding the two matrices. ✔ Check: (1) 3 and 1; (2) [1, 1]/√2 for 3 and [1, -1]/√2 for 1; (3) dot product 0; (4) 3·[[0.5, 0.5], [0.5, 0.5]] + 1·[[0.5, -0.5], [-0.5, 0.5]] = [[2, 1], [1, 2]]"
+        done: false
+      - text: "Worksheet — definiteness. By hand, on paper: (1) f(x) = xᵀSx for S above: f([1, 1]) and f([1, -1]). Positive definite? (2) M = [[1, 2], [2, 1]]: eigenvalues and type of surface. (3) Find x with xᵀMx < 0. (4) Prove AᵀA is PSD in one line. (5) Hence why is every covariance matrix PSD? ✔ Check: (1) 6 and 2 — yes, both eigenvalues > 0; (2) 3, -1 — indefinite, a saddle; (3) x = [1, -1] gives -2; (4) xᵀAᵀAx = ‖Ax‖² ≥ 0; (5) Σ = (1/N)XcᵀXc with centred data Xc — it has the AᵀA form"
+        done: false
+      - text: "Worksheet — curvature and the learning rate. By hand, on paper: loss L(w) = ½wᵀHw with H = [[10, 0], [0, 1]]. (1) Gradient? (2) Gradient descent w ← w − η∇L. Show each eigen-coordinate is multiplied by (1 − ηλ) each step. (3) Largest stable η? (4) Per-step factors on both axes for η = 0.1 and η = 0.19. Which axis is slow in each case? (5) Condition number κ = λmax/λmin, and why large κ means slow training. ✔ Check: (1) Hw; (2) w − ηHw = (I − ηH)w, which is diagonal here; (3) η < 2/λmax = 0.2; (4) η = 0.1: 0 and 0.9 (flat axis slow); η = 0.19: 0.9 and 0.81 (both slow-ish, steep axis zig-zags); (5) κ = 10 — η is capped by the steepest direction, so the flattest direction crawls"
+        done: false
+      - text: "Read: Distill — Why Momentum Really Works, up to and including 'The Dynamics of Momentum'. It is this worksheet with beautiful sliders."
+        done: false
+        resources:
+          - label: "Distill: Why Momentum Really Works"
+            url: "https://distill.pub/2017/momentum/"
+      - text: "Code (NumPy, 15 min): Run GD on L = ½wᵀHw from w = [1, 1] for η in [0.05, 0.1, 0.19, 0.21]. Plot both coordinates over 50 steps and confirm the stability boundary at 0.2. Rotate H by a 45° rotation R (H′ = RHRᵀ) and check that the limit is unchanged — eigenvalues are what matter, not axes."
+        done: false
+      - text: "Reflect (journal): Explain in plain words how normalisation layers and Adam's per-parameter scaling attack a large condition number."
+        done: false
+  - id: "svd"
+    title: "SVD: Rotate, Stretch, Rotate"
+    subtitle: "Every matrix is UΣVᵀ: the geometry of a layer, spectral norm, best low-rank approximation, pseudoinverse, spectral normalisation"
+    requires:
+      - "math-for-ml/svd-pca"
+    tasks:
+      - text: "Watch: Steve Brunton — SVD overview (~7 min), then MIT 18.065 (Strang) Lecture 6 — Singular Value Decomposition (~53 min)."
+        done: false
+        resources:
+          - label: "Brunton: SVD overview"
+            url: "https://www.youtube.com/watch?v=gXbThCXjZFM"
+          - label: "MIT 18.065 L6 — SVD"
+            url: "https://www.youtube.com/watch?v=rYz83XPxiZo"
+      - text: "Theory — A = UΣVᵀ for ANY m×n matrix. Read it right to left: Vᵀ rotates the input so the special input directions vᵢ line up with the axes; Σ stretches axis i by σᵢ ≥ 0 (and drops or pads dimensions); U rotates the result to the output directions uᵢ. So Avᵢ = σᵢuᵢ. The σᵢ are the square roots of the eigenvalues of AᵀA. Rank = number of nonzero σ. ‖A‖₂ = σ₁ and ‖A‖_F = √(Σσᵢ²). Eckart–Young: keeping the top k terms Σ σᵢuᵢvᵢᵀ gives the best rank-k approximation, with spectral error σₖ₊₁."
+        done: false
+      - text: "Worksheet — SVD by hand. By hand, on paper: A = [[3, 0], [4, 5]]. (1) Compute AᵀA. (2) Its eigenvalues, and the singular values of A. (3) ‖A‖₂ and ‖A‖_F; check ‖A‖_F² = σ₁² + σ₂². (4) |det A| vs σ₁σ₂. (5) Condition number σ₁/σ₂. ✔ Check: (1) [[25, 20], [20, 25]]; (2) 45 and 5 → σ₁ = √45 ≈ 6.708, σ₂ = √5 ≈ 2.236; (3) 6.708 and √50 ≈ 7.071; 45 + 5 = 50 ✓; (4) both 15; (5) 3"
+        done: false
+      - text: "Worksheet — compress a layer. By hand, on paper: (1) For A above, the best rank-1 approximation is A₁ = σ₁u₁v₁ᵀ. What is the spectral-norm error ‖A − A₁‖₂ without computing A₁? (2) Given u₁ ≈ [-0.316, -0.949] and v₁ ≈ [-0.707, -0.707] (signs may flip together), compute A₁. (3) A 1000×1000 layer stored as rank-50 factors (U₅₀Σ₅₀)·V₅₀ᵀ needs how many numbers? (4) If the discarded singular values are all 0.1, what is the Frobenius error? ✔ Check: (1) σ₂ ≈ 2.236; (2) A₁ ≈ [[1.5, 1.5], [4.5, 4.5]]; (3) 50·(1000 + 1000) = 100,000 vs 1,000,000; (4) √(950 × 0.01) ≈ 3.082"
+        done: false
+      - text: "Worksheet — SVD meanings for a network. By hand, on paper: (1) Which input direction does layer W amplify most, and where does it land? (2) Spectral normalisation uses W/σ₁(W). What is the new layer's maximum gain? (3) Pseudoinverse A⁺ = VΣ⁺Uᵀ (invert the nonzero σ, transpose the shape). Compute A⁺ for A = [[2, 0], [0, 0]]. (4) Why is the pseudoinverse defined even when A is singular? ✔ Check: (1) v₁ is amplified by σ₁ and lands on u₁; (2) 1 — the layer becomes 1-Lipschitz; (3) [[0.5, 0], [0, 0]]; (4) it only inverts the directions A doesn't destroy and sends the rest to 0 — the minimum-norm least-squares solution"
+        done: false
+      - text: "Read: Spectral Normalization for GANs (Miyato et al., 2018) — abstract and §2.1. Power iteration estimates σ₁ cheaply each step."
+        done: false
+        bonus: true
+        resources:
+          - label: "Spectral Normalization (arXiv)"
+            url: "https://arxiv.org/abs/1802.05957"
+      - text: "Code (NumPy, 20 min): Make a 200×100 matrix = (rank-5 matrix) + 0.01·noise. Plot its singular values on a log scale. For k = 1…20 reconstruct the rank-k approximation and check ‖A − Aₖ‖_F = √(Σ_{i>k} σᵢ²). Then implement power iteration for σ₁ and compare with np.linalg.svd."
+        done: false
+      - text: "Reflect (journal): Describe a single linear layer using only the words rotate, stretch, rotate. Then: what would a 'dead' singular direction mean for the network?"
+        done: false
+  - id: "numerics"
+    title: "Conditioning & Floating Point"
+    subtitle: "Machine epsilon, fp16 vs bf16, ill-conditioned systems, and the max-subtraction that keeps softmax alive"
+    tasks:
+      - text: "Theory — finite precision. A float stores a sign, an exponent (range) and a mantissa (precision). Machine epsilon ε = gap between 1 and the next float: fp32 2⁻²³ ≈ 1.2e-7, fp16 2⁻¹⁰ ≈ 9.8e-4, bf16 2⁻⁷ ≈ 7.8e-3. fp16 overflows above 65504, bf16 has fp32's range. Condition number κ(A) = σmax/σmin: solving Ax = b can lose about log₁₀ κ digits. Rules: never form inv(A) @ b (use solve or lstsq), and never exponentiate a big number."
+        done: false
+      - text: "Worksheet — floats. By hand, on paper: (1) fp16 has 10 mantissa bits. What is the spacing between floats near 2048? So what is 2048 + 1 in fp16? (2) Is exp(12) representable in fp16? (3) A weight of 1.0 receives an update of 1e-4. Does it change in fp16? In bf16? In fp32? (4) Why does mixed-precision training keep an fp32 master copy of the weights, and why is bf16 popular for training? ✔ Check: (1) spacing 2048 × 2⁻¹⁰ = 2, so 2048 + 1 = 2048; (2) no — exp(12) ≈ 162755 > 65504 → inf; (3) fp16 and bf16: no (1e-4 < ε/2); fp32: yes; (4) tiny updates vanish at low precision; bf16 keeps fp32's range, so no overflow and less need for loss scaling"
+        done: false
+      - text: "Worksheet — an ill-conditioned system. By hand, on paper: A = [[1, 1], [1, 1.0001]]. (1) Solve Ax = [2, 2.0001]. (2) Change b by 0.0001: solve Ax = [2, 2.0002]. (3) Geometrically, why does a tiny change in b move x so far? (4) The condition number is about? ✔ Check: (1) [1, 1]; (2) [0, 2]; (3) the two lines are nearly parallel, so their intersection slides a long way; (4) ≈ 40002"
+        done: false
+      - text: "Worksheet — log-sum-exp and softmax. By hand, on paper: z = [1000, 1001, 1002]. (1) What happens to exp(z) in fp32? (2) Show softmax(z) = softmax(z − c) for any constant c. (3) Compute softmax(z) using c = max z. (4) Compute logsumexp(z) = max z + log Σ exp(z − max z). (5) Why compute cross-entropy straight from logits (log_softmax) instead of log(softmax(z))? ✔ Check: (1) overflow → inf, and inf/inf = nan; (2) e^(zᵢ−c)/Σe^(zⱼ−c) — the e^(−c) cancels; (3) [e⁻², e⁻¹, 1]/Σ ≈ [0.09, 0.245, 0.665]; (4) ≈ 1002.408; (5) a tiny softmax value can underflow to 0 and log(0) = −inf; log_softmax = z − logsumexp(z) never underflows"
+        done: false
+      - text: "Read: Gregory Gundersen — The log-sum-exp trick."
+        done: false
+        resources:
+          - label: "Gundersen: log-sum-exp"
+            url: "https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/"
+      - text: "Read: Goldberg — 'What Every Computer Scientist Should Know About Floating-Point Arithmetic', the sections on rounding error and relative error."
+        done: false
+        bonus: true
+        resources:
+          - label: "Goldberg: Floating-Point"
+            url: "https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html"
+      - text: "Code (NumPy, 15 min): Reproduce every answer with np.float16 / np.float32 (e.g. np.float16(2048) + np.float16(1)). Write a stable softmax and logsumexp and test them on z = [1000, 1001, 1002]. Compare np.linalg.solve with np.linalg.inv(A) @ b on a Hilbert matrix of size 12."
+        done: false
+      - text: "Reflect (journal): List the numerical tricks you now recognise inside a standard training loop (max-subtraction, log-space losses, eps in normalisation/Adam, loss scaling…) and the failure each one prevents."
+        done: false
+  - id: "layer-gradients"
+    title: "Gradients of Matrix Expressions"
+    subtitle: "The shape rule, dL/dW = Gᵀx as a sum of outer products, and Jacobians you never build (elementwise, softmax, VJP)"
+    requires:
+      - "math-for-ml/matrix-calculus"
+    tasks:
+      - text: "Read: Parr & Howard — The Matrix Calculus You Need For Deep Learning, through 'The vector chain rule'."
+        done: false
+        resources:
+          - label: "explained.ai: Matrix Calculus"
+            url: "https://explained.ai/matrix-calculus/"
+      - text: "Read: CS231n handout — Derivatives, Backpropagation, and Vectorization (Justin Johnson). Pay attention to the 'generalized Jacobian' and why it is never materialised."
+        done: false
+        resources:
+          - label: "CS231n: Derivatives & Vectorization"
+            url: "http://cs231n.stanford.edu/handouts/derivatives.pdf"
+      - text: "Theory — the shape rule. For a scalar loss L, ∂L/∂T has exactly the shape of T. Layer Y = XWᵀ + b with X (B×in), W (out×in), upstream G = ∂L/∂Y (B×out): ∂L/∂W = GᵀX (out×in), ∂L/∂X = GW (B×in), ∂L/∂b = G summed over rows (out,). Shortcut: write down the only product of G and the other operand that has the right shape — then confirm once with index notation: ∂L/∂Wⱼₖ = Σ_b G_bⱼ X_bk."
+        done: false
+      - text: "Worksheet — one example. By hand, on paper: y = Wx with W = [[1, 0, 2], [0, 1, 1]], x = [1, 2, 3], upstream gradient g = ∂L/∂y = [1, -1]. (1) ∂L/∂W = gxᵀ — compute it. (2) ∂L/∂x = Wᵀg. (3) What is the rank of ∂L/∂W for a single example? (4) Check your answer to 1 entry by entry: ∂L/∂Wⱼₖ = gⱼxₖ. ✔ Check: (1) [[1, 2, 3], [-1, -2, -3]]; (2) [1, -1, 1]; (3) 1 — it's an outer product; (4) e.g. entry (2,3) = g₂x₃ = -3"
+        done: false
+      - text: "Worksheet — a batch. By hand, on paper: X = [[1, 2], [0, 1], [1, 0]] (B = 3, in = 2), W = [[1, -1], [2, 0]] (out = 2), G = ∂L/∂Y = [[1, 0], [0, 1], [1, 1]]. (1) ∂L/∂W = GᵀX. (2) ∂L/∂X = GW. (3) ∂L/∂b. (4) Recompute ∂L/∂W as Σ_b g_b x_bᵀ (one outer product per example) and confirm. (5) With batch size B and a 4096×4096 weight, what is the max rank of a batch gradient? ✔ Check: (1) [[2, 2], [1, 1]]; (2) [[1, -1], [2, 0], [3, -1]]; (3) [2, 2]; (4) [[1, 2], [0, 0]] + [[0, 0], [0, 1]] + [[1, 0], [1, 0]] = [[2, 2], [1, 1]]; (5) ≤ B (when B < 4096) — a sum of B rank-1 terms"
+        done: false
+      - text: "Worksheet — identities to own. By hand, on paper: (1) ∇ₓ(aᵀx). (2) ∇ₓ(xᵀAx); evaluate at A = [[1, 4], [0, 2]], x = [1, -1]. (3) ∇ₓ‖x‖². (4) ∇_W ‖Wx − y‖². (5) ∇_W tr(AW). ✔ Check: (1) a; (2) (A + Aᵀ)x = [-2, 0]; (3) 2x; (4) 2(Wx − y)xᵀ; (5) Aᵀ"
+        done: false
+      - text: "Worksheet — Jacobians you never build. By hand, on paper: (1) For h = σ(z) elementwise, what does the Jacobian look like, and what does backprop compute instead? (2) Softmax s = [0.5, 0.3, 0.2]: Jacobian J = diag(s) − ssᵀ. Compute it. (3) Why does every row of J sum to 0? (4) Backprop needs only gᵀJ (a vector–Jacobian product). For a layer with n inputs and outputs, compare the cost of building J vs computing gᵀJ directly. ✔ Check: (1) diagonal diag(σ′(z)); backprop computes g ⊙ σ′(z); (2) [[0.25, -0.15, -0.1], [-0.15, 0.21, -0.06], [-0.1, -0.06, 0.16]]; (3) the softmax outputs always sum to 1, so moving any logit can't change the total; (4) n² numbers vs O(n) — e.g. for softmax gᵀJ = s ⊙ (g − (g·s))"
+        done: false
+      - text: "Code (NumPy, 20 min): Implement forward/backward for Y = XWᵀ + b with L = ½ΣY². Gradient-check ∂L/∂W, ∂L/∂X and ∂L/∂b against central finite differences (h = 1e-5, float64). Then do the same for softmax + cross-entropy and confirm ∂L/∂z = s − onehot(y)."
+        done: false
+      - text: "Reflect (journal): Write the three backward formulas for a linear layer from memory, and explain the shape rule to someone who has never seen a Jacobian."
+        done: false
+  - id: "signal-propagation"
+    title: "Variance Through Deep Layers"
+    subtitle: "Var(w·x) = n·Var(w)·Var(x): Xavier/He initialisation, exploding & vanishing products, residuals, and LayerNorm as a projection"
+    requires:
+      - "math-for-ml/init-regularization"
+    tasks:
+      - text: "Read: D2L — Numerical Stability and Initialization."
+        done: false
+        resources:
+          - label: "D2L: Stability & Init"
+            url: "https://d2l.ai/chapter_multilayer-perceptrons/numerical-stability-and-init.html"
+      - text: "Worksheet — variance of a neuron. By hand, on paper: y = Σᵢ₌₁ⁿ wᵢxᵢ with independent zero-mean wᵢ and xᵢ. (1) Show Var(y) = n·Var(w)·Var(x). (2) n = 256, Var(w) = Var(x) = 1: std(y)? (3) Choose Var(w) so that Var(y) = Var(x); give std(w) for n = 256. (4) ReLU zeroes half of a symmetric input, so E[ReLU(z)²] = Var(z)/2. What Var(w) compensates (He init)? std(w) for n = 256? (5) Xavier/Glorot: Var(w) = 2/(n_in + n_out). std(w) for a 256 → 512 layer? ✔ Check: (1) the variances of independent terms add, and Var(wx) = Var(w)Var(x) for zero means; (2) √256 = 16; (3) 1/n → std 0.0625; (4) 2/n → std 0.0884; (5) √(2/768) ≈ 0.051"
+        done: false
+      - text: "Worksheet — depth multiplies. By hand, on paper: (1) Each layer multiplies the activation variance by a = n·Var(w). After 50 layers with a = 1.1? With a = 0.9? (2) The backward pass multiplies by Jᵀ = Wᵀdiag(σ′) at every layer. Why does ‖Jₗᵀ⋯J₁ᵀ‖₂ ≤ Π‖Jᵢ‖₂ predict exploding or vanishing gradients? (3) A residual block x + F(x) has Jacobian I + J_F. Why does that help? ✔ Check: (1) 1.1⁵⁰ ≈ 117.4 and 0.9⁵⁰ ≈ 0.00515; (2) a product of 50 gains a little above 1 explodes, a little below 1 vanishes; (3) the identity gives the gradient a path that isn't multiplied by small factors; gain stays ≈ 1 when J_F is small"
+        done: false
+      - text: "Worksheet — LayerNorm as linear algebra. By hand, on paper: x = [2, 4, 6, 8]. (1) LayerNorm without the learned scale and shift: subtract the mean, divide by the (population) std. (2) Centring is multiplication by C = I − (1/n)11ᵀ. What is C1, and what is the rank of C for n = 4? (3) What is the norm of the normalised vector? Generalise to n entries. (4) So geometrically, where do LayerNorm outputs live? ✔ Check: (1) mean 5, std √5, so [-1.342, -0.447, 0.447, 1.342]; (2) C1 = 0, rank 3 — a projection that removes the all-ones direction; (3) 2 = √n; (4) on a sphere of radius √n inside the hyperplane orthogonal to 1"
+        done: false
+      - text: "Read: He et al. (2015) — Delving Deep into Rectifiers, §2.2 (the initialisation derivation). Then skim Glorot & Bengio (2010), §4."
+        done: false
+        bonus: true
+        resources:
+          - label: "He et al. 2015"
+            url: "https://arxiv.org/abs/1502.01852"
+          - label: "Glorot & Bengio 2010"
+            url: "https://proceedings.mlr.press/v9/glorot10a.html"
+      - text: "Code (NumPy, 20 min): Build a 50-layer ReLU MLP of width 256 (forward only). Plot the std of activations per layer for init std ∈ {0.01, 1/√256, √(2/256), 0.1}. Only He init stays flat. Add residual connections and LayerNorm and plot again."
+        done: false
+      - text: "Reflect (journal): Initialisation, normalisation, residuals, gradient clipping — explain how each is a different answer to 'a product of many matrices is unstable'."
+        done: false
+  - id: "attention-linalg"
+    title: "Attention as Linear Algebra"
+    subtitle: "Scores as a low-rank bilinear form, softmax rows as convex combinations, QK and OV circuits, and the residual stream as a shared vector space"
+    requires:
+      - "math-for-ml/embeddings-attention"
+    tasks:
+      - text: "Watch: 3B1B — Attention in transformers, step-by-step (DL Chapter 6, ~26 min). Note every matrix shape on screen."
+        done: false
+        resources:
+          - label: "3B1B DL6 — Attention"
+            url: "https://www.youtube.com/watch?v=eMlx5fFNoYc"
+      - text: "Worksheet — scores as a Gram matrix. By hand, on paper: 3 tokens with embeddings X = [[1, 0], [0, 1], [1, 1]] (rows), and W_Q = W_K = I so Q = K = X. (1) S = QKᵀ. (2) Is S symmetric? Would it be with W_Q ≠ W_K? (3) Rank of S, and det S. Why must rank ≤ d_k? (4) Scale row 1 by 1/√2 and softmax it. ✔ Check: (1) [[1, 0, 1], [0, 1, 1], [1, 1, 2]]; (2) yes — but in general S = XW_QW_KᵀXᵀ is not symmetric: 'i attends to j' ≠ 'j attends to i'; (3) rank 2, det 0 — S = QKᵀ with Q of shape T×d_k, so rank ≤ d_k; (4) [0.707, 0, 0.707] → [0.401, 0.198, 0.401]"
+        done: false
+      - text: "Worksheet — rows of attention are averages. By hand, on paper: values V = [[1, 0], [0, 1], [2, 2]]. (1) Attention weights a = [0.5, 0.25, 0.25] for one query: output = Σⱼ aⱼvⱼ. (2) Explain why every output lies in the convex hull of the value vectors. (3) Every attention matrix A satisfies A1 = 1. What does that make 1, in eigen-terms? (4) What shape does A take with a causal mask, and what does row 1 contain? ✔ Check: (1) [1, 0.75]; (2) weights are ≥ 0 and sum to 1 — a convex combination can't leave the hull; (3) an eigenvector with eigenvalue 1; (4) lower-triangular; row 1 is [1, 0, 0] — token 1 sees only itself"
+        done: false
+      - text: "Worksheet — QK and OV circuits. By hand, on paper, with d_model = 512 and d_head = 64: (1) score(i, j) = xᵢᵀ(W_Q W_Kᵀ)xⱼ. What is the shape of W_Q W_Kᵀ, and its max rank? (2) Parameters in W_Q and W_K together vs a full d_model × d_model bilinear matrix. (3) The value-then-output path W_V W_O: shape and max rank? (4) Multi-head output = concat(heads)·W_O. Using block matrices, show it equals Σ_h head_h · W_O^(h), where W_O^(h) is head h's slice of rows. ✔ Check: (1) 512×512, rank ≤ 64; (2) 65,536 vs 262,144; (3) 512×512, rank ≤ 64; (4) [H₁ … H₈]·[W₁; …; W₈] = Σ H_hW_h — the column-times-row (outer-product) view, block by block"
+        done: false
+      - text: "Read: Anthropic — A Mathematical Framework for Transformer Circuits: 'The Residual Stream', 'Virtual Weights' and 'Attention Heads are Independent and Additive'."
+        done: false
+        resources:
+          - label: "Transformer Circuits framework"
+            url: "https://transformer-circuits.pub/2021/framework/index.html"
+      - text: "Code (NumPy, 25 min): Implement single-head causal self-attention from scratch with shape asserts: X (T, d) → Q, K, V → scores/√d_k → mask → stable softmax → output. Check that rows of A sum to 1, that rank(QKᵀ) ≤ d_k, and that changing a future token never changes past outputs. Then add H heads and verify the concat·W_O = Σ per-head identity numerically."
+        done: false
+      - text: "Reflect (journal): The residual stream is a vector space every layer reads from (projections) and writes to (additions). Connect this to near-orthogonality in high dimensions (Matrix Norms section) and to low-rank heads (Rank section)."
+        done: false
+  - id: "capstone"
+    title: "Capstone: A Network in Pure Linear Algebra"
+    subtitle: "Hand-written forward/backward, gradient checks, SVD autopsy of trained weights — and a one-page cheat sheet"
+    tasks:
+      - text: "Worksheet — mixed review. By hand, on paper: (1) X is (64, 100) and nn.Linear(100, 50): output shape and ∂L/∂W shape. (2) Max rank of (300×20)·(20×200). (3) Q is orthogonal and ‖x‖ = 7: ‖Qx‖? (4) n = 400 inputs, Var(w) = 1/400, Var(x) = 1: Var(w·x)? (5) Possible eigenvalues of a projection matrix? (6) Hessian eigenvalues {50, 2}: largest stable GD learning rate, and the condition number. (7) softmax([0, 0, ln 2]). (8) Rank of the gradient of one weight matrix from a single example. ✔ Check: (1) (64, 50) and (50, 100); (2) 20; (3) 7; (4) 1; (5) 0 or 1; (6) η < 0.04, κ = 25; (7) [0.25, 0.25, 0.5]; (8) 1"
+        done: false
+      - text: "Code (NumPy, 90 min): Train a 2-layer MLP (2 → 64 → 3) on the classic 3-arm spiral dataset using only NumPy. Write forward and backward from the formulas in 'Gradients of Matrix Expressions', use He init, gradient-check once, then train to > 95% accuracy."
+        done: false
+        resources:
+          - label: "CS231n: spiral dataset case study"
+            url: "https://cs231n.github.io/neural-networks-case-study/"
+      - text: "Code (NumPy, 30 min): SVD autopsy. Plot the singular values of the trained W₁ and W₂. Replace W₁ by its rank-k approximation for k = 1…rank and plot accuracy vs k. What is the smallest k that keeps accuracy within 1%?"
+        done: false
+      - text: "Reflect (journal): One-page cheat sheet: the four views of matmul; layer shapes and backward formulas; rank and null space; spectral vs Frobenius norm; SVD; the conditioning and learning-rate limit; the variance rule; attention as a low-rank bilinear form. If any line takes you more than a minute, revisit that section."
+        done: false
+      - text: "Watch: MIT 18.065 (Strang) — Matrix Methods in Data Analysis, Signal Processing, and Machine Learning. Pick the lectures that match your weakest section on the cheat sheet."
+        done: false
+        bonus: true
+        resources:
+          - label: "MIT OCW 18.065"
+            url: "https://ocw.mit.edu/courses/18-065-matrix-methods-in-data-analysis-signal-processing-and-machine-learning-spring-2018/"
