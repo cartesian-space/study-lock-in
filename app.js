@@ -901,6 +901,7 @@ function loadStateForSyllabus(key) {
   _activeSyllabusKey = resolved;
   localStorage.setItem('study-lock-in:active-syllabus', resolved);
   loadUIState();
+  state.journalDay = state.activeDay;   // notes always belong to the open section
 }
 
 function postEvent(event) {
@@ -1130,6 +1131,17 @@ function editTaskInline(taskId, el) {
   }
 }
 
+function toggleTaskMenu(taskId) {
+  const pop = document.getElementById('task-menu-' + taskId);
+  if (!pop) return;
+  const open = pop.hidden;
+  closeTaskMenus();
+  pop.hidden = !open;
+}
+function closeTaskMenus() {
+  document.querySelectorAll('.task-menu-pop:not([hidden])').forEach(p => { p.hidden = true; });
+}
+
 /** Edit button handler: open the inline editor on the task's text (text is no longer click-to-edit). */
 function editTaskText(taskId) {
   const el = document.querySelector(`#task-${CSS.escape(taskId)} .task-text`);
@@ -1154,33 +1166,46 @@ function renderApp() {
             <div><h1 class="editable" onclick="editMeta('title', this)" title="Click to edit title">${escapeHtml(meta.title || 'Study Tracker')}</h1>
             <p class="subtitle editable" onclick="editMeta('subtitle', this)" title="Click to edit subtitle">${escapeHtml(meta.subtitle || 'Click to set subtitle')}</p></div>
           </div>
+          <nav class="view-switch" aria-label="View">
+            <a href="#study" data-view="study" onclick="setView('study'); return false;">Study</a>
+            <a href="#overview" data-view="overview" onclick="setView('overview'); return false;">Overview</a>
+          </nav>
         </div>
         <div class="header-right">
           <div class="header-stat"><span class="stat-label">Overall</span><span class="stat-value" id="overallPercent">0%</span></div>
-          <div class="header-stat"><span class="stat-label">Streak</span><span class="stat-value" id="streakCount">0 🔥</span></div>
+          <div class="header-stat header-stat-streak"><span class="stat-label">Streak</span><span class="stat-value" id="streakCount">0 🔥</span></div>
           <div class="syllabus-switcher" id="syllabusSwitcher" title="Switch syllabus">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
             <select id="syllabusSelect" title="Switch active syllabus"></select>
           </div>
-          <button class="btn-theme" id="musicToggle" title="Toggle study music" ${musicOn ? 'class="btn-theme active"' : ''}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-          </button>
-          <button class="btn-theme" id="dimToggle" title="Zen mode" ${dimMode ? 'class="btn-theme active"' : ''}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 22c-4-4-8-7.5-8-12a8 8 0 0 1 16 0c0 4.5-4 8-8 12z"/><path d="M12 10v6"/><path d="M9 13l3-3 3 3"/></svg>
-          </button>
-          <button class="btn-theme" id="themeToggle" title="Toggle theme">
-            <svg class="theme-icon icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            <svg class="theme-icon icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-          </button>
-          <button class="btn-data" id="dataToggle" title="Export / Import">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          </button>
-          <button class="btn-reset" id="resetBtn" title="Reset all progress">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-          </button>
-          <button class="btn-lock" id="lockBtn" onclick="lockApp()" title="Lock workspace (passcode protected)">
-            🔒
-          </button>
+          <div class="app-menu" id="appMenu">
+            <button class="app-menu-btn" id="appMenuBtn" onclick="toggleAppMenu(event)" title="Menu" aria-haspopup="true" aria-expanded="false">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+            </button>
+            <div class="app-menu-pop" role="menu" hidden>
+              <button class="app-menu-item" id="themeToggle" role="menuitem">
+                <svg class="theme-icon icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <svg class="theme-icon icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                <span>Toggle theme</span></button>
+              <button class="app-menu-item" id="musicToggle" role="menuitem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                <span>Study music</span><i class="app-menu-state"></i></button>
+              <button class="app-menu-item" id="dimToggle" role="menuitem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c-4-4-8-7.5-8-12a8 8 0 0 1 16 0c0 4.5-4 8-8 12z"/><path d="M12 10v6"/><path d="M9 13l3-3 3 3"/></svg>
+                <span>Zen mode</span><i class="app-menu-state"></i></button>
+              <div class="app-menu-sep"></div>
+              <button class="app-menu-item" id="dataToggle" role="menuitem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Export / Import</span></button>
+              <button class="app-menu-item danger" id="resetBtn" role="menuitem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                <span>Reset progress…</span></button>
+              <div class="app-menu-sep"></div>
+              <button class="app-menu-item" id="lockBtn" onclick="lockApp()" role="menuitem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span>Lock workspace</span></button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="data-panel" id="dataPanel" style="display:none">
@@ -1245,6 +1270,10 @@ function renderApp() {
       <div class="overall-progress"><div class="overall-progress-bar" id="overallBar" style="width:0%"></div></div>
     </header>
 
+    <div class="overview-head view-overview-only">
+      <h2>Overview</h2>
+      <p>Progress, activity and how your syllabi connect.</p>
+    </div>
     <div class="stats-grid" id="statsGrid">
       <div class="stat-card"><div class="stat-card-icon tasks-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div><div class="stat-card-info"><span class="stat-card-value" id="completedTasks">0 / 0</span><span class="stat-card-label">Tasks Completed</span></div></div>
       <div class="stat-card"><div class="stat-card-icon bonus-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div class="stat-card-info"><span class="stat-card-value" id="bonusDone">0 / 0</span><span class="stat-card-label">Bonus Tasks Done</span></div></div>
@@ -1278,10 +1307,14 @@ function renderApp() {
 
     <section class="syllabi-map" id="syllabiMap"></section>
 
-    <nav class="day-nav" id="dayNav"></nav>
-    <div id="addDayFormArea"></div>
-    <main class="day-panels" id="dayPanels"></main>
-    <section class="journal-section" id="journalSection"></section>
+    <div class="study-layout view-study-only">
+      <nav class="day-nav" id="dayNav" aria-label="Sections"></nav>
+      <div class="study-main">
+        <div id="addDayFormArea"></div>
+        <main class="day-panels" id="dayPanels"></main>
+        <section class="journal-section" id="journalSection"></section>
+      </div>
+    </div>
     <footer class="footer"><p>${escapeHtml(meta.title || 'Study Tracker')} · Data saved locally · <span class="editable footer-edit" onclick="editMeta('title', this.closest('.footer').querySelector('p'))" title="Click to edit">✏️</span></p></footer>
 
   `;
@@ -1296,6 +1329,9 @@ function renderApp() {
   if (musicOn) musicBtn.classList.add('active');
   document.getElementById('resetBtn').addEventListener('click', resetAll);
   document.getElementById('dataToggle').addEventListener('click', toggleDataPanel);
+  document.querySelectorAll('.app-menu-item').forEach(it => it.addEventListener('click', () => closeAppMenu()));
+  _syncMenuStates();
+  applyView();
 
   renderDayNav();
   renderActivePanel();
@@ -1309,6 +1345,56 @@ function renderApp() {
     if (h) window._headerObserver.observe(h);
   }
 }
+
+// ===== VIEWS: Study (do the current section) / Overview (stats, heatmap, map) =====
+const VIEW_KEY = 'study-lock-in:view';
+function getView() {
+  const h = (location.hash || '').replace('#', '');
+  if (h === 'study' || h === 'overview') return h;
+  return localStorage.getItem(VIEW_KEY) === 'overview' ? 'overview' : 'study';
+}
+function applyView() {
+  const v = getView();
+  document.body.dataset.view = v;
+  document.querySelectorAll('.view-switch a').forEach(a => {
+    a.classList.toggle('on', a.dataset.view === v);
+    a.setAttribute('aria-current', a.dataset.view === v ? 'page' : 'false');
+  });
+  if (v === 'overview') renderSyllabiMap();   // size the map to the now-visible card
+}
+function setView(v) {
+  if (v !== 'study' && v !== 'overview') return;
+  localStorage.setItem(VIEW_KEY, v);
+  if (location.hash !== '#' + v) history.pushState(null, '', '#' + v);
+  applyView();
+  window.scrollTo({ top: 0 });
+}
+window.addEventListener('hashchange', applyView);
+window.addEventListener('popstate', applyView);
+
+// ===== HEADER ⋯ MENU =====
+function toggleAppMenu(e) {
+  if (e) e.stopPropagation();
+  const pop = document.querySelector('#appMenu .app-menu-pop');
+  if (!pop) return;
+  const open = pop.hidden;
+  pop.hidden = !open;
+  document.getElementById('appMenuBtn')?.setAttribute('aria-expanded', String(open));
+  if (open) _syncMenuStates();
+}
+function closeAppMenu() {
+  const pop = document.querySelector('#appMenu .app-menu-pop');
+  if (pop && !pop.hidden) { pop.hidden = true; document.getElementById('appMenuBtn')?.setAttribute('aria-expanded', 'false'); }
+}
+function _syncMenuStates() {
+  document.getElementById('musicToggle')?.classList.toggle('active', !!musicOn);
+  document.getElementById('dimToggle')?.classList.toggle('active', !!dimMode);
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#appMenu')) closeAppMenu();
+  if (!e.target.closest('.task-menu')) closeTaskMenus();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeAppMenu(); closeTaskMenus(); } });
 
 // ===== RENDER: DAY NAVIGATION =====
 function renderDayNav() {
@@ -1339,15 +1425,21 @@ function renderDayNav() {
 
   // The section nav is a single horizontally scrolling row; keep the active section visible
   const activePill = nav.querySelector('.day-pill.active');
-  if (activePill && nav.scrollWidth > nav.clientWidth) {
+  if (activePill && _isVerticalNav(nav)) {
+    if (nav.scrollHeight > nav.clientHeight) nav.scrollTop = activePill.offsetTop - (nav.clientHeight - activePill.offsetHeight) / 2;
+  } else if (activePill && nav.scrollWidth > nav.clientWidth) {
     nav.scrollLeft = activePill.offsetLeft - (nav.clientWidth - activePill.offsetWidth) / 2;
   }
   _bindDayNavScroll(nav);
 }
 
 /** Desktop niceties for the scrolling section nav: vertical wheel scrolls it sideways, edges fade when more is hidden. */
+/** PC shows the section list as a vertical sidebar; phones keep the horizontal scrolling row. */
+function _isVerticalNav(nav) { return getComputedStyle(nav).flexDirection === 'column'; }
+
 function _bindDayNavScroll(nav) {
   const updateFade = () => {
+    if (_isVerticalNav(nav)) { nav.classList.remove('fade-left', 'fade-right'); return; }
     const max = nav.scrollWidth - nav.clientWidth;
     nav.classList.toggle('fade-left', nav.scrollLeft > 2);
     nav.classList.toggle('fade-right', max > 2 && nav.scrollLeft < max - 2);
@@ -1356,6 +1448,7 @@ function _bindDayNavScroll(nav) {
     nav._scrollBound = true;
     nav.addEventListener('scroll', updateFade, { passive: true });
     nav.addEventListener('wheel', e => {
+      if (_isVerticalNav(nav)) return;   // sidebar scrolls vertically as normal
       if (nav.scrollWidth <= nav.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return; // trackpads already scroll sideways
       e.preventDefault();
       nav.scrollLeft += e.deltaY;
@@ -1408,7 +1501,10 @@ function renderActivePanel() {
     <div class="block-card section-card expanded" data-block="${addBlockId}">
       <div class="block-content"><div class="block-tasks">`;
 
-  tasks.forEach(task => { html += renderTask(task, day.id); });
+  const open = tasks.filter(t => !state.checked[t.id]), done = tasks.filter(t => state.checked[t.id]);
+  open.forEach(task => { html += renderTask(task, day.id); });
+  if (done.length) html += `<div class="done-group-head">Completed · ${done.length}</div>`;
+  done.forEach(task => { html += renderTask(task, day.id); });
 
   html += `<div class="add-task-row">
         <button class="add-item-btn" onclick="showAddTaskForm('${addBlockId}')" id="add-task-trigger-${addBlockId}">
@@ -1508,7 +1604,7 @@ function formatTaskText(text, isWorksheet = /^Worksheet\b/.test(text || '')) {
   if (at < 0) return lines(html);
   const main = html.slice(0, at).trimEnd();
   const check = html.slice(at + '✔ Check:'.length).trim().replace(/;\s+(?=\(\d{1,2}\)\s)/g, ' ');
-  return `${lines(main)}<span class="task-check"><span class="task-check-label">✔ Check</span>${lines(check)}</span>`;
+  return `${lines(main)}<details class="task-answers" onclick="event.stopPropagation()"><summary>Show answers</summary><span class="task-check">${lines(check)}</span></details>`;
 }
 
 // ===== RENDER: SINGLE TASK =====
@@ -1590,6 +1686,7 @@ function renderTask(task, dayId) {
     comment: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
     copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
     edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+    link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
     trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
   };
 
@@ -1598,7 +1695,7 @@ function renderTask(task, dayId) {
   const tags = (kind.label ? `<span class="task-kind kind-${kind.kind}">${escapeHtml(kind.label)}</span>` : '')
     + (task.bonus ? '<span class="task-bonus-tag" title="Bonus — optional, does not block section completion">★ bonus</span>' : '');
   return `<div class="task-item ${doneClass} ${isComposing ? 'commenting' : ''} ${kind.kind ? 'kind-' + kind.kind : ''}" data-task="${task.id}" id="task-${task.id}">
-    <div class="task-info">
+    <div class="task-info" ${doneClass ? `onclick="this.closest('.task-item').classList.toggle('open')" title="Show / hide details"` : ''}>
       ${tags ? `<div class="task-tags">${tags}</div>` : ''}<span class="task-text">${formatTaskText(kind.body, kind.kind === 'worksheet')}</span>
       ${resourceHtml}
     </div>
@@ -1610,9 +1707,18 @@ function renderTask(task, dayId) {
       <button class="task-btn comment-trigger ${hasComments}" onclick="event.preventDefault(); event.stopPropagation(); toggleCommentCard('${task.id}')" title="Comment" aria-label="Comment">
         ${ICON.comment}<span class="lbl-comment">Comment</span><span class="comment-count">${commentCount || ''}</span>
       </button>
-      <button class="task-btn copy-btn" onclick="event.stopPropagation(); copyTaskText('${task.id}', this)" title="Copy text" aria-label="Copy text">${ICON.copy}<span>Copy</span></button>
-      <button class="task-btn edit-btn" onclick="event.stopPropagation(); editTaskText('${task.id}')" title="Edit task" aria-label="Edit task">${ICON.edit}<span>Edit</span></button>
-      <button class="task-btn danger" onclick="event.stopPropagation(); removeTask('${task.id}')" title="Delete task" aria-label="Delete task">${ICON.trash}<span>Delete</span></button>
+      <div class="task-menu">
+        <button class="task-btn task-menu-btn" onclick="event.stopPropagation(); toggleTaskMenu('${task.id}')" title="More actions" aria-label="More actions" aria-haspopup="true">
+          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+        </button>
+        <div class="task-menu-pop" id="task-menu-${task.id}" role="menu" hidden>
+          <button class="task-menu-item copy-btn" role="menuitem" onclick="event.stopPropagation(); closeTaskMenus(); copyTaskText('${task.id}', this.closest('.task-menu').querySelector('.task-menu-btn'))">${ICON.copy}<span>Copy text</span></button>
+          <button class="task-menu-item" role="menuitem" onclick="event.stopPropagation(); closeTaskMenus(); editTaskText('${task.id}')">${ICON.edit}<span>Edit task</span></button>
+          <button class="task-menu-item" role="menuitem" onclick="event.stopPropagation(); closeTaskMenus(); showAddResourceForm('${task.id}')">${ICON.link}<span>Add link</span></button>
+          <div class="task-menu-sep"></div>
+          <button class="task-menu-item danger" role="menuitem" onclick="event.stopPropagation(); closeTaskMenus(); removeTask('${task.id}')">${ICON.trash}<span>Delete task</span></button>
+        </div>
+      </div>
     </div>
     ${commentHtml}
   </div>`;
@@ -1633,10 +1739,10 @@ function renderJournal() {
   const currentText = state.journal[state.journalDay] || '';
 
   section.innerHTML = `
-    <h2 class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Section Journal</h2>
+    <h2 class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Notes for this section</h2>
     <div class="journal-tabs">${tabsHtml}</div>
     <div class="journal-area">
-      <textarea id="journalText" placeholder="What did you learn in this section? Key takeaways, aha moments...">${escapeHtml(currentText)}</textarea>
+      <textarea id="journalText" placeholder="Key takeaways, aha moments, questions for later…">${escapeHtml(currentText)}</textarea>
       <button class="journal-save" id="journalSave">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Note
       </button>
@@ -1720,11 +1826,14 @@ function calculateStreak() {
 
 // ===== DAY MANAGEMENT =====
 function switchDay(dayId) {
+  if (state.journalDay !== dayId && document.getElementById('journalText')) saveJournalEntry();
   state.activeDay = dayId;
+  state.journalDay = dayId;   // the notes box always belongs to the open section
   saveUIState();  // localStorage only — no TOML write
   console.log('[ui-state] activeDay →', dayId);
   document.querySelectorAll('.day-pill').forEach(p => p.classList.toggle('active', p.dataset.day === dayId));
   renderActivePanel();
+  renderJournal();
   renderSyllabiMap();
 }
 
@@ -1938,7 +2047,7 @@ function copyTaskText(taskId, btn) {
 function showAddResourceForm(taskId) {
   document.querySelectorAll('.add-resource-form').forEach(f => f.style.display = 'none');
   const form = document.getElementById('resource-form-' + taskId);
-  if (form) { form.style.display = 'flex'; setTimeout(() => document.getElementById('resource-label-' + taskId).focus(), 50); }
+  if (form) { form.style.display = 'flex'; setTimeout(() => document.getElementById('resource-label-' + taskId)?.focus(), 50); }
 }
 function hideAddResourceForm(taskId) {
   const form = document.getElementById('resource-form-' + taskId);
@@ -2652,6 +2761,7 @@ function _renderMapAerial(model) {
 function aerialGo(key) {
   if (key !== _activeSyllabusKey) switchSyllabus(key);
   else renderSyllabiMap();
+  setView('study');
   const target = document.getElementById('dayNav');
   if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -2814,6 +2924,7 @@ function mapGo(key, sid) {
     renderDayNav();
     updateStats();
   }
+  setView('study');
   const target = document.getElementById('dayNav');
   if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }

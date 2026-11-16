@@ -106,6 +106,7 @@ All browser storage keys are prefixed to avoid collisions:
 | `study-tracker-ui:<syllabusKey>` | JSON string | Pure UI preferences (`activeDay`, `journalDay`, `theme`). |
 | `study-lock-in:map-view` | `"auto"` \| `"graph"` \| `"list"` \| `"aerial"` | Syllabi map view (auto = graph on desktop, list on phones). |
 | `study-lock-in:map-collapsed` | `"true"` or unset | Syllabi map collapsed. |
+| `study-lock-in:view` | `"study"` \| `"overview"` | Last view (also reflected in the URL hash `#study` / `#overview`). |
 
 ## 📄 Syllabus YAML Schema (`_data/syllabi/<key>.yml`)
 
@@ -195,6 +196,15 @@ progress that has not been exported yet.
 
 ---
 
+## 🧭 Page Structure: two views
+
+The page has two views, switched by the header's **Study | Overview** control (`setView()` / `applyView()`; URL hash `#study` / `#overview`, remembered in `study-lock-in:view`; browser back/forward works). `body[data-view]` drives visibility via CSS:
+
+* **Study** (default) — `.study-layout`: section list (`#dayNav`, a sticky left sidebar on PC ≥1000px, a scrolling pill row on smaller screens) + `.study-main` (the open section's tasks + "Notes for this section"). The journal always follows the open section (`switchDay()` sets `journalDay = activeDay`).
+* **Overview** — `.overview-head`, `#statsGrid`, `#activityHeatmap` (with **+ Log**), `#syllabiMap`. Map/aerial clicks call `setView('study')`.
+* **Header**: title, view switch, Overall %, syllabus switcher, and one **⋯ menu** (`#appMenu`) holding theme, music, zen, Export/Import, reset and lock (same element ids as before, so existing handlers bind unchanged).
+* **Task cards**: type tag, text, links; toolbar shows **✓ Mark done** and **💬 Comment**; Copy / Edit / Add link / Delete live in a per-task ⋯ (`toggleTaskMenu()`). Worksheet answers are a closed `<details class="task-answers">` ("Show answers"). Completed tasks are grouped under "Completed · N" at the end of the section and collapse to one line (click to expand).
+
 ## ⚠️ Critical Rules for Future Agents
 
 1. **Never Re-introduce a Server Dependency**:
@@ -224,4 +234,4 @@ progress that has not been exported yet.
    * Phones (≤720px) default to the list view in Auto; keep every view working.
 
 6. **Aesthetic & UX Fidelity**:
-   Preserve the Anthropic-inspired warm cream palette, typography (`Inter` + `JetBrains Mono`), micro-animations (card hover lift, checkbox bounce, Khan Academy-style particle burst, trophy pile), and Zen focus audio.
+   Calm, uncluttered study surface: neutral warm-grey base with the olive accent reserved for "current" and "done", white cards with 1px borders, typography `Inter` + `JetBrains Mono`. Keep the Study view focused on the open section — new dashboards/widgets belong in Overview, new rarely-used actions in a ⋯ menu. Keep the particle burst, trophy pile and Zen focus audio working.
