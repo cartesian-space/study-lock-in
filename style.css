@@ -4064,3 +4064,11 @@ html body { background: var(--bg-primary); }
     box-shadow: inset 0 0 0 1.5px var(--accent);
   }
 }
+
+/* Focus: dim every section except the one you're on (hover restores) */
+.study-layout .day-nav .day-pill:not(.active):not(.add-day-pill) { opacity: 0.6; transition: opacity var(--transition); }
+.study-layout .day-nav .day-pill.completed:not(.active) { opacity: 0.42; }
+.study-layout .day-nav .day-pill:not(.active):hover,
+.study-layout .day-nav .day-pill:not(.active):focus-visible { opacity: 1; }
+.study-layout .day-nav .add-day-pill { opacity: 0.6; }
+.study-layout .day-nav .add-day-pill:hover { opacity: 1; }
