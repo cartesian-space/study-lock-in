@@ -3746,3 +3746,38 @@ button, a, input, select, textarea, .block-header, .day-pill {
   .comment-thread .comment-delete { opacity: 1; }
   .comment-avatar { width: 24px; height: 24px; }
 }
+
+/* ── Separate tasks clearly: each task is its own tile, typed with a small tag ── */
+.section-card .block-tasks { display: flex; flex-direction: column; gap: 12px; }
+.section-card .task-item {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+  padding: 14px 16px 12px; margin: 0; box-shadow: var(--shadow);
+}
+.section-card .task-item:hover { margin: 0; padding: 14px 16px 12px; background: var(--bg-card); border-color: var(--border-hover); }
+.section-card .task-item::before { display: none; }
+.section-card .task-item.kind-worksheet { border-left: 3px solid var(--accent); }
+.task-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.task-tags .task-bonus-tag { margin: 0; }
+.task-kind {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: var(--radius-pill);
+  font-size: 0.66rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase;
+  background: var(--bg-surface); color: var(--text-secondary);
+}
+.task-kind.kind-watch { background: rgba(176, 122, 46, 0.12); color: #9A6A26; }
+.task-kind.kind-read { background: rgba(79, 109, 143, 0.12); color: #4F6D8F; }
+.task-kind.kind-worksheet { background: var(--accent-dim); color: var(--accent); }
+.task-kind.kind-code { background: rgba(122, 92, 142, 0.12); color: #7A5C8E; }
+.task-kind.kind-reflect { background: rgba(91, 112, 70, 0.12); color: #5B7046; }
+[data-theme="dark"] .task-kind.kind-watch { color: #D9A75E; }
+[data-theme="dark"] .task-kind.kind-read { color: #8FB0D6; }
+[data-theme="dark"] .task-kind.kind-code { color: #B79AD0; }
+[data-theme="dark"] .task-kind.kind-reflect { color: #A9BC8B; }
+
+/* Worksheet problems: a faint divider between (1), (2), (3)… */
+.task-text .task-line + .task-line { border-top: 1px dashed var(--border-color); padding-top: 8px; margin-top: 8px; }
+.task-text .task-line:has(.mx) + .task-line, .task-text .task-line + .task-line:has(.mx) { padding-top: 10px; }
+.task-text .task-check .task-line + .task-line { border-top-color: color-mix(in srgb, var(--border-color) 70%, transparent); padding-top: 5px; margin-top: 5px; }
+@media (max-width: 768px) {
+  .section-card .block-tasks { gap: 10px; }
+  .section-card .task-item, .section-card .task-item:hover { padding: 12px 12px 10px; }
+}

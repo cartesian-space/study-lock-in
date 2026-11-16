@@ -929,18 +929,20 @@ function postEvent(event) {
       state[event.k] = event.v;
     }
   } else if (op === 'comment_add') {
+    if (!state.comments) state.comments = {};
     if (!state.comments[event.id]) state.comments[event.id] = [];
     state.comments[event.id].push(event.v);
   } else if (op === 'comment_rm') {
-    if (state.comments[event.id]) {
+    if (state.comments && state.comments[event.id]) {
       state.comments[event.id].splice(event.idx, 1);
       if (!state.comments[event.id].length) delete state.comments[event.id];
     }
   } else if (op === 'res_add') {
+    if (!state.customResources) state.customResources = {};
     if (!state.customResources[event.id]) state.customResources[event.id] = [];
     state.customResources[event.id].push({ label: event.label, url: event.url });
   } else if (op === 'res_rm') {
-    if (state.customResources[event.id]) {
+    if (state.customResources && state.customResources[event.id]) {
       state.customResources[event.id].splice(event.idx, 1);
       if (!state.customResources[event.id].length) delete state.customResources[event.id];
     }
@@ -1478,10 +1480,20 @@ function _parseMatrix(src) {
   return rows;
 }
 
-function formatTaskText(text) {
+/** Split a task's leading type prefix ("Watch:", "Worksheet —", "Code (NumPy, 10 min):"…) into a tag. Display only. */
+function taskKind(text) {
+  const t = text || '';
+  let m = t.match(/^Worksheet\s+—\s*/);
+  if (m) { const b = t.slice(m[0].length); return { kind: 'worksheet', label: 'Worksheet', body: b.charAt(0).toUpperCase() + b.slice(1) }; }
+  m = t.match(/^(Watch|Read|Code|Reflect)((?:\s*\([^)]*\))?):\s*/);
+  if (m) return { kind: m[1].toLowerCase(), label: m[1] + (m[2] ? ' · ' + m[2].trim().slice(1, -1) : ''), body: t.slice(m[0].length) };
+  return { kind: '', label: '', body: t };
+}
+
+function formatTaskText(text, isWorksheet = /^Worksheet\b/.test(text || '')) {
   const raw = text || '';
   // Matrices render as grids in worksheets only (Code/Read tasks may contain literal array syntax).
-  const html = /^Worksheet\b/.test(raw) ? renderMatrices(raw) : escapeHtml(raw);
+  const html = isWorksheet ? renderMatrices(raw) : escapeHtml(raw);
   // Each "(N)" problem becomes its own block line (number in a fixed gutter); any intro text stays above.
   const lines = body => {
     const parts = body.split(/(?:^|\s)\((\d{1,2})\)\s/);      // [intro, n1, text1, n2, text2, …]
@@ -1582,9 +1594,12 @@ function renderTask(task, dayId) {
   };
 
   // Content uses the full row width; all actions (incl. marking done) live in a labelled toolbar underneath.
-  return `<div class="task-item ${doneClass} ${isComposing ? 'commenting' : ''}" data-task="${task.id}" id="task-${task.id}">
+  const kind = taskKind(task.text);
+  const tags = (kind.label ? `<span class="task-kind kind-${kind.kind}">${escapeHtml(kind.label)}</span>` : '')
+    + (task.bonus ? '<span class="task-bonus-tag" title="Bonus — optional, does not block section completion">★ bonus</span>' : '');
+  return `<div class="task-item ${doneClass} ${isComposing ? 'commenting' : ''} ${kind.kind ? 'kind-' + kind.kind : ''}" data-task="${task.id}" id="task-${task.id}">
     <div class="task-info">
-      ${task.bonus ? '<span class="task-bonus-tag" title="Bonus — optional, does not block section completion">★ bonus</span>' : ''}<span class="task-text">${formatTaskText(task.text)}</span>
+      ${tags ? `<div class="task-tags">${tags}</div>` : ''}<span class="task-text">${formatTaskText(kind.body, kind.kind === 'worksheet')}</span>
       ${resourceHtml}
     </div>
     <div class="task-toolbar">
@@ -1933,17 +1948,12 @@ function addCustomResource(taskId) {
   const label = document.getElementById('resource-label-' + taskId).value.trim();
   const url = document.getElementById('resource-url-' + taskId).value.trim();
   if (!label || !url) { showToast('⚠️ Both label and URL required'); return; }
-  if (!state.customResources) state.customResources = {};
-  if (!state.customResources[taskId]) state.customResources[taskId] = [];
-  state.customResources[taskId].push({ label, url });
   postEvent({ op: 'res_add', id: taskId, label, url });
   renderActivePanel(); showToast('🔗 Resource added');
 }
 function removeCustomResource(taskId, idx) {
   if (!state.customResources || !state.customResources[taskId]) return;
   postEvent({ op: 'res_rm', id: taskId, idx });
-  state.customResources[taskId].splice(idx, 1);
-  if (!state.customResources[taskId].length) delete state.customResources[taskId];
   renderActivePanel(); showToast('🗑️ Resource removed');
 }
 function handleResourceKeydown(e, taskId) {
@@ -1986,10 +1996,7 @@ function submitComment(taskId) {
   if (!input) return;
   const text = input.value.trim();
   if (!text) return;
-  if (!state.comments) state.comments = {};
-  if (!state.comments[taskId]) state.comments[taskId] = [];
-  state.comments[taskId].push(text);
-  postEvent({ op: 'comment_add', id: taskId, v: text });
+  postEvent({ op: 'comment_add', id: taskId, v: text });   // postEvent is the only place that mutates state
   renderActivePanel(); showToast('💬 Comment added');
   // Re-open compose on same task
   setTimeout(() => { activeComposeTaskId = taskId; renderActivePanel();
@@ -1999,15 +2006,12 @@ function submitComment(taskId) {
 function removeComment(taskId, idx) {
   if (!state.comments || !state.comments[taskId]) return;
   postEvent({ op: 'comment_rm', id: taskId, idx });
-  state.comments[taskId].splice(idx, 1);
-  if (!state.comments[taskId].length) delete state.comments[taskId];
   renderActivePanel();
 }
 function resolveComments(taskId) {
   if (!state.comments || !state.comments[taskId]) return;
   const count = state.comments[taskId].length;
   for (let i = count - 1; i >= 0; i--) postEvent({ op: 'comment_rm', id: taskId, idx: i });
-  delete state.comments[taskId];
   closeCompose();
   showToast('✅ Resolved');
 }
