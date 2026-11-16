@@ -14,7 +14,9 @@ title: "Study Lock-In"
 <script id="site-config" type="application/json">
 {
   "baseurl": "{{ site.baseurl }}",
-  "passcodeHash": "{{ site.passcode_hash }}"
+  "passcodeHash": "{{ site.passcode_hash }}",
+  "googleClientId": "{{ site.google_client_id }}",
+  "allowedEmailHash": "{{ site.allowed_email_sha256 }}"
 }
 </script>
 
@@ -32,6 +34,12 @@ title: "Study Lock-In"
  '-----'</pre>
       <h1 class="lock-minimal-title">Study // Lock-In</h1>
       <div class="lock-minimal-sub">Workspace Locked</div>
+    </div>
+
+    <div id="googleSignin" class="lock-google" hidden>
+      <div id="googleSigninButton" class="lock-google-btn"></div>
+      <p id="googleSigninError" class="lock-error-text" role="alert"></p>
+      <p class="lock-google-note">Sign in with the Google account that owns this workspace.</p>
     </div>
 
     <form id="lockForm" class="lock-minimal-form" onsubmit="handleUnlock(event)">
@@ -52,8 +60,6 @@ title: "Study Lock-In"
       <p id="lockError" class="lock-error-text"></p>
       <div class="lock-minimal-hint">
         <span>press <kbd>enter</kbd> to unlock</span>
-        <span class="lock-hint-sep">·</span>
-        <span>default: <code>lockin</code></span>
       </div>
     </form>
   </div>

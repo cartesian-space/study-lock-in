@@ -8,9 +8,16 @@ markdown: kramdown
 plugins:
   - jekyll-feed
 
-# Passcode Lock Configuration
-# Default passcode: lockin
-# Hash: SHA-256 of "lockin"
+# ── Lock screen ─────────────────────────────────────────────────────────
+# Google sign-in (preferred): when google_client_id is set, the lock screen shows
+# "Sign in with Google" and only the account whose lower-cased email hashes to
+# allowed_email_sha256 may unlock. Client IDs are public by design (not a secret).
+#   allowed_email_sha256 = SHA-256 of the lower-cased email — the address itself is not stored here.
+google_client_id: ""
+allowed_email_sha256: "b6fbd8fe4ff88e383a96285c61e37f6150d8c2acad204aa8dc61c1d522b5bf45"
+
+# Passcode fallback (used only while google_client_id is empty): SHA-256 of the passcode.
+# NOTE: this hash is NOT "lockin" (that was a wrong comment); set it with scripts/set-passcode.sh.
 passcode_hash: "ef537ff85794828b8460be01daab559098fb6eb696fc9df92ea8ab5c1c0e3579"
 
 # Files to exclude from Jekyll generation

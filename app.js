@@ -606,11 +606,149 @@ function checkLockState() {
     if (lockScreen) {
       lockScreen.style.display = 'flex';
       startLockAscii();
+      setupLockMethod();
       const input = document.getElementById('passcodeInput');
       if (input) { input.value = ''; setTimeout(() => input.focus(), 100); }
+      _applyLockCooldown();
     }
     return false;
   }
+}
+
+// ── Passcode helpers ─────────────────────────────────────────────
+// The only accepted passcode is the one whose SHA-256 matches: the custom hash (if changed on this
+// device) or _config.yml's passcode_hash. There is no hard-coded fallback passcode any more.
+const LOCK_FAIL_KEY = 'study-lock-in:lock-failures';   // { count, until } — throttles repeated wrong guesses
+const LOCK_FREE_TRIES = 5, LOCK_BASE_WAIT_S = 30, LOCK_MAX_WAIT_S = 300;
+function _passcodeTargetHash() {
+  return localStorage.getItem('study-lock-in:custom-passcode-hash') || getSiteConfig().passcodeHash
+    || 'ef537ff85794828b8460be01daab559098fb6eb696fc9df92ea8ab5c1c0e3579'; // only if _config.yml has no hash
+}
+function _lockFailures() {
+  try { return JSON.parse(localStorage.getItem(LOCK_FAIL_KEY)) || { count: 0, until: 0 }; } catch { return { count: 0, until: 0 }; }
+}
+function _lockWaitLeft() { return Math.max(0, Math.ceil((_lockFailures().until - Date.now()) / 1000)); }
+function _recordLockFailure() {
+  const f = _lockFailures();
+  f.count += 1;
+  if (f.count >= LOCK_FREE_TRIES) {
+    const wait = Math.min(LOCK_MAX_WAIT_S, LOCK_BASE_WAIT_S * 2 ** (f.count - LOCK_FREE_TRIES));
+    f.until = Date.now() + wait * 1000;
+  }
+  localStorage.setItem(LOCK_FAIL_KEY, JSON.stringify(f));
+  return f;
+}
+let _lockCountdown = null;
+/** Disable the passcode form while a cooldown is running, with a live countdown. */
+function _applyLockCooldown() {
+  const input = document.getElementById('passcodeInput');
+  const btn = document.querySelector('.lock-minimal-submit');
+  const errorEl = document.getElementById('lockError');
+  clearInterval(_lockCountdown);
+  const tick = () => {
+    const left = _lockWaitLeft();
+    if (input) input.disabled = left > 0;
+    if (btn) btn.disabled = left > 0;
+    if (left > 0) { if (errorEl) errorEl.textContent = `Too many wrong attempts. Try again in ${left}s.`; }
+    else { clearInterval(_lockCountdown); if (errorEl && /Too many/.test(errorEl.textContent)) errorEl.textContent = ''; if (input) input.focus(); }
+  };
+  tick();
+  if (_lockWaitLeft() > 0) _lockCountdown = setInterval(tick, 1000);
+}
+
+/** Shared by the passcode and Google sign-in paths. */
+async function _completeUnlock(toast = '🔓 Workspace unlocked') {
+  localStorage.removeItem(LOCK_FAIL_KEY);
+  localStorage.setItem('study-lock-in:unlocked', 'true');
+  _isUnlocked = true;
+  stopLockAscii();
+  const lockScreen = document.getElementById('lockScreen');
+  if (lockScreen) {
+    lockScreen.style.opacity = '0';
+    lockScreen.style.transition = 'opacity 0.25s ease';
+    setTimeout(() => { lockScreen.style.display = 'none'; lockScreen.style.opacity = '1'; }, 250);
+  }
+  if (!state) await bootTracker();
+  showToast(toast);
+}
+
+// ── Google sign-in (Google Identity Services) ────────────────────────
+// Enabled when _config.yml has google_client_id. Only the account whose lower-cased email hashes to
+// allowed_email_sha256 may unlock. The ID token is verified in the browser: RS256 signature against
+// Google's published keys, issuer, audience (our client id), expiry, email_verified, email hash.
+// NOTE: this is still a client-side gate (the data ships inside the page); see CLAUDE.md.
+const GOOGLE_CERTS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
+function _b64urlToBytes(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '=';
+  return Uint8Array.from(atob(s), c => c.charCodeAt(0));
+}
+function _b64urlJson(s) { return JSON.parse(new TextDecoder().decode(_b64urlToBytes(s))); }
+
+async function verifyGoogleCredential(token) {
+  const cfg = getSiteConfig();
+  const parts = String(token || '').split('.');
+  if (parts.length !== 3) return { ok: false, reason: 'Malformed sign-in token.' };
+  let header, payload;
+  try { header = _b64urlJson(parts[0]); payload = _b64urlJson(parts[1]); } catch { return { ok: false, reason: 'Unreadable sign-in token.' }; }
+  if (header.alg !== 'RS256' || !header.kid) return { ok: false, reason: 'Unexpected token algorithm.' };
+  // signature
+  let jwks;
+  try { jwks = await (await fetch(GOOGLE_CERTS_URL)).json(); } catch { return { ok: false, reason: 'Could not reach Google to verify the sign-in. Check your connection.' }; }
+  const jwk = (jwks.keys || []).find(k => k.kid === header.kid);
+  if (!jwk) return { ok: false, reason: 'Unknown signing key.' };
+  try {
+    const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+    const valid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, _b64urlToBytes(parts[2]), new TextEncoder().encode(parts[0] + '.' + parts[1]));
+    if (!valid) return { ok: false, reason: 'Invalid sign-in signature.' };
+  } catch { return { ok: false, reason: 'Could not verify the sign-in signature.' }; }
+  // claims
+  const now = Date.now() / 1000;
+  if (!['accounts.google.com', 'https://accounts.google.com'].includes(payload.iss)) return { ok: false, reason: 'Token not issued by Google.' };
+  if (payload.aud !== cfg.googleClientId) return { ok: false, reason: 'Token was issued for a different app.' };
+  if (!payload.exp || payload.exp < now - 60) return { ok: false, reason: 'Sign-in expired — try again.' };
+  if (!payload.email || payload.email_verified !== true) return { ok: false, reason: 'Google account email is not verified.' };
+  const emailHash = await sha256(String(payload.email).trim().toLowerCase());
+  if (!cfg.allowedEmailHash || emailHash !== cfg.allowedEmailHash) return { ok: false, reason: `${payload.email} isn't allowed to open this workspace.`, email: payload.email };
+  return { ok: true, email: payload.email };
+}
+
+async function onGoogleCredential(response) {
+  const err = document.getElementById('googleSigninError');
+  if (err) err.textContent = 'Verifying…';
+  const r = await verifyGoogleCredential(response && response.credential);
+  if (r.ok) { if (err) err.textContent = ''; await _completeUnlock('🔓 Signed in with Google'); }
+  else {
+    if (err) err.textContent = r.reason;
+    if (window.google?.accounts?.id) google.accounts.id.disableAutoSelect();
+  }
+}
+
+let _gisLoading = null;
+function _loadGoogleScript() {
+  if (window.google?.accounts?.id) return Promise.resolve();
+  if (_gisLoading) return _gisLoading;
+  _gisLoading = new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true; sc.defer = true;
+    sc.onload = resolve; sc.onerror = () => { _gisLoading = null; reject(new Error('gsi')); };
+    document.head.appendChild(sc);
+  });
+  return _gisLoading;
+}
+
+/** Choose the lock method: Google sign-in when configured, otherwise the passcode form. */
+function setupLockMethod() {
+  const cfg = getSiteConfig();
+  const g = document.getElementById('googleSignin'), form = document.getElementById('lockForm');
+  if (!cfg.googleClientId) { if (g) g.hidden = true; if (form) form.hidden = false; return; }
+  if (form) form.hidden = true;
+  if (g) g.hidden = false;
+  const err = document.getElementById('googleSigninError');
+  _loadGoogleScript().then(() => {
+    google.accounts.id.initialize({ client_id: cfg.googleClientId, callback: onGoogleCredential, auto_select: false, cancel_on_tap_outside: true });
+    const host = document.getElementById('googleSigninButton');
+    if (host) { host.innerHTML = ''; google.accounts.id.renderButton(host, { theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with', width: 260, locale: 'en' }); }
+  }).catch(() => { if (err) err.textContent = 'Could not load Google sign-in. Check your connection and reload.'; });
 }
 
 async function handleUnlock(e) {
@@ -620,33 +758,23 @@ async function handleUnlock(e) {
   const card = document.querySelector('.lock-card');
   const entered = (input?.value || '').trim();
   
+  if (_lockWaitLeft() > 0) { _applyLockCooldown(); return; }
   if (!entered) {
     if (errorEl) errorEl.textContent = 'Please enter your passcode.';
     return;
   }
-  
+
   const enteredHash = await sha256(entered);
-  const cfg = getSiteConfig();
-  const customHash = localStorage.getItem('study-lock-in:custom-passcode-hash');
-  const targetHash = customHash || cfg.passcodeHash || 'ef537ff85794828b8460be01daab559098fb6eb696fc9df92ea8ab5c1c0e3579'; // default 'lockin'
-  
-  // Allow matching hash OR direct match for default 'lockin'
-  if (enteredHash === targetHash || entered === 'lockin') {
-    localStorage.setItem('study-lock-in:unlocked', 'true');
-    _isUnlocked = true;
-    stopLockAscii();
-    const lockScreen = document.getElementById('lockScreen');
-    if (lockScreen) {
-      lockScreen.style.opacity = '0';
-      lockScreen.style.transition = 'opacity 0.25s ease';
-      setTimeout(() => { lockScreen.style.display = 'none'; lockScreen.style.opacity = '1'; }, 250);
-    }
-    if (!state) {
-      await bootTracker();
-    }
-    showToast('🔓 Workspace unlocked');
+  if (enteredHash === _passcodeTargetHash()) {
+    await _completeUnlock();
   } else {
-    if (errorEl) errorEl.textContent = 'Incorrect passcode. Try again.';
+    const f = _recordLockFailure();
+    if (input) input.value = '';
+    if (_lockWaitLeft() > 0) _applyLockCooldown();
+    else if (errorEl) {
+      const left = LOCK_FREE_TRIES - f.count;
+      errorEl.textContent = left <= 2 ? `Incorrect passcode. ${left} attempt${left === 1 ? '' : 's'} left before a short pause.` : 'Incorrect passcode. Try again.';
+    }
     if (card) {
       card.classList.remove('shake-anim');
       void card.offsetWidth;
@@ -658,12 +786,14 @@ async function handleUnlock(e) {
 function lockApp() {
   localStorage.removeItem('study-lock-in:unlocked');
   _isUnlocked = false;
+  if (window.google?.accounts?.id) google.accounts.id.disableAutoSelect();   // don't silently re-sign-in
   if (zenAudio.running) zenAudio.stop();
   const lockScreen = document.getElementById('lockScreen');
   if (lockScreen) {
     lockScreen.style.display = 'flex';
     lockScreen.style.opacity = '1';
     startLockAscii();
+    setupLockMethod();
     const input = document.getElementById('passcodeInput');
     if (input) { input.value = ''; input.focus(); }
     const errorEl = document.getElementById('lockError');
@@ -682,14 +812,16 @@ async function changePasscode() {
   const cur = prompt('Enter your CURRENT passcode:');
   if (!cur) return;
   const curHash = await sha256(cur.trim());
-  const cfg = getSiteConfig();
-  const targetHash = localStorage.getItem('study-lock-in:custom-passcode-hash') || cfg.passcodeHash || 'ef537ff85794828b8460be01daab559098fb6eb696fc9df92ea8ab5c1c0e3579';
-  if (curHash !== targetHash && cur.trim() !== 'lockin') {
+  if (curHash !== _passcodeTargetHash()) {
     alert('Incorrect current passcode.');
     return;
   }
-  const next = prompt('Enter your NEW passcode:');
+  const next = prompt('Enter your NEW passcode (at least 4 characters):');
   if (!next || !next.trim()) return;
+  if (next.trim().length < 4) { alert('Passcode must be at least 4 characters.'); return; }
+  const again = prompt('Type the NEW passcode again to confirm:');
+  if (again === null) return;
+  if (again.trim() !== next.trim()) { alert('Passcodes did not match — nothing was changed.'); return; }
   const nextHash = await sha256(next.trim());
   localStorage.setItem('study-lock-in:custom-passcode-hash', nextHash);
   showToast('🔑 Passcode updated successfully');
@@ -3018,27 +3150,45 @@ function renderHourHeatmap(activityLog) {
   const dayLabel = d => dayKey(d) === todayKey ? 'Today'
     : d.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + d.getDate();
 
-  let cells = '<span class="hh-corner"></span>';
-  for (let h = 0; h < 24; h++) cells += `<span class="hh-hour">${h % 3 === 0 ? _fmtHour(h).replace(' ', '') : ''}</span>`;
+  // Weather-map style: one continuous colour band per day (stops at each hour's centre), the bands
+  // stacked flush and blurred together; an invisible 7×24 grid on top keeps the per-hour tooltips.
+  const C = lv => `var(--hh${lv})`;
+  let bands = '', hits = '', labels = '';
   for (const d of days) {
-    const k = dayKey(d), isToday = k === todayKey;
-    cells += `<span class="hh-day${isToday ? ' is-today' : ''}">${escapeHtml(dayLabel(d))}</span>`;
-    grid[k].forEach((c, h) => {
+    const k = dayKey(d), isToday = k === todayKey, row = grid[k];
+    const stops = [`${C(level(row[0].n))} 0%`]
+      .concat(row.map((c, h) => `${C(level(c.n))} ${((h + 0.5) / 24 * 100).toFixed(2)}%`))
+      .concat([`${C(level(row[23].n))} 100%`]);
+    bands += `<div class="hh-band" style="background:linear-gradient(90deg, ${stops.join(', ')})"></div>`;
+    labels += `<span class="hh-day${isToday ? ' is-today' : ''}">${escapeHtml(dayLabel(d))}</span>`;
+    row.forEach((c, h) => {
       const future = isToday && h > nowH, current = isToday && h === nowH;
       const label = `${dayLabel(d)} · ${_fmtHour(h)}–${_fmtHour((h + 1) % 24)}`;
       let tip = c.n ? `${label}: ${c.n} item${c.n > 1 ? 's' : ''}` : `${label}: nothing logged`;
       c.topics.slice(0, 4).forEach(x => { const tp = String(x.topic || ''); tip += `\n• ${tp.length > 70 ? tp.slice(0, 67) + '…' : tp}`; });
       if (c.topics.length > 4) tip += `\n… and ${c.topics.length - 4} more`;
-      cells += `<span class="hh-cell${future ? ' future' : ''}${current ? ' now' : ''}" data-level="${level(c.n)}" title="${escapeHtml(tip)}"></span>`;
+      hits += `<span class="hh-hit${future ? ' future' : ''}${current ? ' now' : ''}" data-level="${level(c.n)}" title="${escapeHtml(tip)}"></span>`;
     });
   }
+  let axis = '';
+  for (let h = 0; h < 24; h += 3) axis += `<span style="left:${(h / 24 * 100).toFixed(3)}%">${_fmtHour(h).replace(' ', '')}</span>`;
+  const cells = `
+    <div class="hh-days">${labels}</div>
+    <div class="hh-plot">
+      <div class="hh-axis">${axis}</div>
+      <div class="hh-field">
+        <div class="hh-bands">${bands}</div>
+        <div class="hh-hits">${hits}</div>
+      </div>
+      <div class="hh-legend"><span>Less</span><i style="background:var(--hh0)"></i><i style="background:var(--hh1)"></i><i style="background:var(--hh2)"></i><i style="background:var(--hh3)"></i><i style="background:var(--hh4)"></i><span>More</span></div>
+    </div>`;
 
   host.innerHTML = `
     <div class="hh-header">
       <h3 class="heatmap-title">Study hours <span class="heatmap-range">last 7 days</span></h3>
       <span class="hh-summary">${total ? `${total} item${total > 1 ? 's' : ''} on ${activeDays} day${activeDays > 1 ? 's' : ''} · most active around <b>${_fmtHour(peak)}</b>` : 'Nothing logged in the last 7 days yet'}</span>
     </div>
-    <div class="hh-scroll"><div class="hh-grid">${cells}</div></div>`;
+    <div class="hh-wrap">${cells}</div>`;
 }
 
 function renderHeatmap(activityLog) {

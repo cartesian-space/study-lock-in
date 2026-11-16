@@ -11,7 +11,7 @@ Welcome, agent! This document provides all the context, architecture patterns, a
 * **Zero Backend at Runtime**: The app runs 100% client-side in the browser. There is no Python/Node server running in production.
 * **Single Source of Truth**: Curricula and baselines live as native YAML files in `_data/syllabi/*.yml`.
 * **Offline-First & Local Persistence**: All progress (checkboxes, timestamps, journal entries, comments, custom links) saves immediately to browser `localStorage`.
-* **Passcode Protected**: A client-side lock screen prevents casual browsing when hosted publicly. Default passcode: `lockin`.
+* **Lock screen**: Google sign-in limited to one account (or a passcode fallback) keeps casual visitors out when hosted publicly. It is a client-side gate, not encryption.
 * **Cross-Machine Git Sync**: Users export their updated progress as YAML, commit it to `_data/syllabi/`, and push to GitHub Pages to sync across devices.
 
 ---
@@ -38,7 +38,8 @@ index.html <script id="syllabi-data" type="application/json">
 
 | Path | Purpose |
 | :--- | :--- |
-| `_config.yml` | Jekyll settings (`baseurl: "/study-lock-in"`, default `passcode_hash`). |
+| `_config.yml` | Jekyll settings (`baseurl`, `google_client_id`, `allowed_email_sha256`, `passcode_hash`). |
+| `scripts/set-passcode.sh` | Sets the passcode fallback's hash in `_config.yml` without the passcode touching disk/history. |
 | `_data/syllabi/*.yml` | Base curricula (`math-for-ml.yml`, `ai-engineering.yml`, etc.) — `sections:` schema, see below. |
 | `_data/legacy_ids.yml` | One-time map of old positional ids (`day-4`, `day-4-blk-2-task-1`) → section ids, used to migrate unexported `localStorage` progress. Deletable once every device has loaded the app. |
 | `_data/activity.yml` | Historical completion log powering the GitHub-style contribution heatmap. |
@@ -80,15 +81,13 @@ Export syllabus progress (**Export for Git**) into `_data/syllabi/` and the acti
 
 ---
 
-## 🔐 Passcode & Security System
+## 🔐 Lock Screen & Security
 
-* **Passcode Hash**: Configured in `_config.yml` under `passcode_hash` (default is SHA-256 for `lockin`).
-* **Storage**: When unlocked, `localStorage.setItem('study-lock-in:unlocked', 'true')` is set.
-* **Custom Passcode**: Users can change their passcode from the Data Panel, which saves `study-lock-in:custom-passcode-hash` in `localStorage`.
-* **Lock Trigger**: Calling `lockApp()` removes the unlocked key and restores the `#lockScreen` overlay.
-* **Important Note**: This is a client-side gate designed to keep casual observers out while hosting on public GitHub Pages. It is not cryptographic encryption for high-security secrets.
-
----
+* **Google sign-in (preferred)**: when `_config.yml` has `google_client_id`, the lock screen shows *Sign in with Google* (Google Identity Services, script loaded only on the lock screen). `verifyGoogleCredential()` checks the ID token's RS256 signature against Google's published keys plus issuer, audience (= client id), expiry, `email_verified`, and that SHA-256 of the lower-cased email equals `allowed_email_sha256` (the address itself is never stored in the repo).
+* **Passcode fallback**: used only while `google_client_id` is empty. `passcode_hash` is the SHA-256 of the passcode — set it with `scripts/set-passcode.sh` (hidden input, never written to disk). There is **no** built-in default passcode; never re-add a plaintext fallback like `entered === 'lockin'`.
+* **Throttling**: 5 wrong passcodes → 30 s cooldown, doubling per further miss (max 5 min), persisted in `study-lock-in:lock-failures`; a correct passcode resets it.
+* **Storage**: unlocking sets `study-lock-in:unlocked = 'true'`; `lockApp()` clears it, disables Google auto-select and shows the lock screen again. A custom passcode can be set per device from the Data panel (`study-lock-in:custom-passcode-hash`, needs the current passcode, typed twice).
+* **Important**: this is a client-side gate for keeping casual visitors out of a public GitHub Pages site. All syllabus/activity data ships inside the page source, so anyone who reads the source can see it. For real protection, put the site behind an access proxy (e.g. Cloudflare Access) — no app changes needed.
 
 ## 💾 LocalStorage & State Schema
 
@@ -103,6 +102,7 @@ All browser storage keys are prefixed to avoid collisions:
 | `study-lock-in:last-activity-category` | string | Last category used in the **+ Log** form. |
 | `study-lock-in:trophies` | JSON array `["Task name", ...]` | Titles of completed tasks for the gravity trophy pile. |
 | `study-lock-in:custom-passcode-hash` | hex string | Custom SHA-256 passcode hash if changed by user. |
+| `study-lock-in:lock-failures` | JSON `{ count, until }` | Wrong-passcode counter and cooldown end time. |
 | `study-tracker-ui:<syllabusKey>` | JSON string | Pure UI preferences (`activeDay`, `journalDay`, `theme`). |
 | `study-lock-in:view` | `"study"` \| `"overview"` | Last view (also reflected in the URL hash `#study` / `#overview`). |
 
@@ -199,7 +199,7 @@ progress that has not been exported yet.
 The page has two views, switched by the header's **Study | Overview** control (`setView()` / `applyView()`; URL hash `#study` / `#overview`, remembered in `study-lock-in:view`; browser back/forward works). `body[data-view]` drives visibility via CSS:
 
 * **Study** (default) — `.study-layout`: section list (`#dayNav`, a sticky left sidebar on PC ≥1000px, a scrolling pill row on smaller screens) + `.study-main` (the open section's tasks + "Notes for this section"). The journal always follows the open section (`switchDay()` sets `journalDay = activeDay`).
-* **Overview** — `.overview-head`, `#statsGrid`, `#activityHeatmap` (with **+ Log**), and `#hourHeatmap` (**Study hours**: last 7 days × 24 local hours, `renderHourHeatmap()`, re-rendered from `renderHeatmap()`; counts `done` entries per hour, `undone` cancels one). (The syllabi map was removed; the Study sidebar replaced it.)
+* **Overview** — `.overview-head`, `#statsGrid`, `#activityHeatmap` (with **+ Log**), and `#hourHeatmap` (**Study hours**: last 7 days × 24 local hours, `renderHourHeatmap()`, re-rendered from `renderHeatmap()`; counts `done` entries per hour, `undone` cancels one. Drawn weather-map style — one gradient band per day, stacked and blurred, colours `--hh0…--hh4` from the yearly heatmap palette — with an invisible 7×24 grid on top for tooltips). (The syllabi map was removed; the Study sidebar replaced it.)
 * **Header**: title, view switch, Overall %, syllabus switcher, and one **⋯ menu** (`#appMenu`) holding theme, music, zen, Export/Import, reset and lock (same element ids as before, so existing handlers bind unchanged).
 * **Task cards**: type tag, text, links; toolbar shows **✓ Mark done** and **💬 Comment**; Copy / Edit / Add link / Delete live in a per-task ⋯ (`toggleTaskMenu()`). Worksheet answers are a closed `<details class="task-answers">` ("Show answers"). Completed tasks stay in their original position, fully visible, with a quieter done style.
 
