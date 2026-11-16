@@ -1128,6 +1128,12 @@ function editTaskInline(taskId, el) {
   }
 }
 
+/** Edit button handler: open the inline editor on the task's text (text is no longer click-to-edit). */
+function editTaskText(taskId) {
+  const el = document.querySelector(`#task-${CSS.escape(taskId)} .task-text`);
+  if (el) editTaskInline(taskId, el);
+}
+
 // ===== RENDER: APP SHELL =====
 function renderApp() {
   console.log('[render] renderApp: building UI, days:', state.days?.length, '| activeDay:', state.activeDay);
@@ -1563,7 +1569,7 @@ function renderTask(task, dayId) {
   return `<div class="task-item ${doneClass} ${isComposing ? 'commenting' : ''}" data-task="${task.id}" id="task-${task.id}">
     <input type="checkbox" class="task-checkbox" ${checked} onchange="toggleTask('${task.id}', this)" onclick="event.stopPropagation()">
     <div class="task-info">
-      ${task.bonus ? '<span class="task-bonus-tag" title="Bonus — optional, does not block section completion">★ bonus</span>' : ''}<span class="task-text editable" onclick="event.stopPropagation(); editTaskInline('${task.id}', this)" title="Click to edit">${formatTaskText(task.text)}</span>
+      ${task.bonus ? '<span class="task-bonus-tag" title="Bonus — optional, does not block section completion">★ bonus</span>' : ''}<span class="task-text">${formatTaskText(task.text)}</span>
       ${resourceHtml}
     </div>
     <div class="task-actions">
@@ -1573,6 +1579,9 @@ function renderTask(task, dayId) {
       </button>
       <button class="task-action-btn copy-btn" onclick="event.stopPropagation(); copyTaskText('${task.id}', this)" title="Copy text">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+      <button class="task-action-btn edit-btn" onclick="event.stopPropagation(); editTaskText('${task.id}')" title="Edit task">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
       </button>
       <button class="task-action-btn danger" onclick="event.stopPropagation(); removeTask('${task.id}')" title="Delete task">🗑️</button>
     </div>
