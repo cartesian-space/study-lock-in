@@ -2709,14 +2709,6 @@ function renderSyllabiMap() {
   const others = aerial ? model.syllabi.filter(s => !lanes.includes(s)) : [];
   const collapsed = localStorage.getItem(MAP_COLLAPSED_KEY) === 'true';
 
-  // Up next: what you're in the middle of, then what's unblocked — per active syllabus.
-  const upNext = [];
-  scope.filter(s => aerial ? s.status === 'active' : true).forEach(s => {
-    const prog = s.nodes.filter(n => n.inProgress);
-    const ready = s.nodes.filter(n => n.ready && !n.inProgress);
-    [...prog, ...ready].slice(0, 2).forEach(n => upNext.push({ s, n }));
-  });
-
   const prevStrips = [...host.querySelectorAll('.map-lane-strip')].map(el => el.scrollLeft);
 
   const totalSections = scope.reduce((a, s) => a + s.nodes.length, 0);
@@ -2739,12 +2731,6 @@ function renderSyllabiMap() {
       </div>
     </div>
     <div class="map-body">
-      <div class="map-upnext">
-        <span class="map-upnext-label">Up next</span>
-        ${upNext.length ? upNext.map(({ s, n }) => `<button class="map-next-chip ${n.inProgress ? 'is-progress' : 'is-ready'} ${s.key !== _activeSyllabusKey ? 'is-other' : ''}" style="--c:${s.color}" onclick="mapGo('${_jsq(s.key)}','${_jsq(n.sid)}')">
-            <i>${escapeHtml(s.short)}</i><span>${n.inProgress ? '▸' : '★'} ${escapeHtml(n.title)}</span><b>${n.done}/${n.total}</b></button>`).join('')
-          : '<span class="map-empty">Nothing unblocked — everything is done or waiting on a prerequisite. 🎉</span>'}
-      </div>
       ${aerial ? _renderMapAerial(model) : current ? _renderMapSnake(current, host) + _renderMapList([current]) : '<p class="map-empty">No syllabus selected.</p>'}
       ${others.length ? `<div class="map-others">${others.map(s => `<button class="map-other" style="--c:${s.color}" onclick="switchSyllabus('${_jsq(s.key)}')" title="meta.status: ${escapeHtml(s.status)}">
           <span class="map-lane-dot"></span>${escapeHtml(s.title)} <em>${escapeHtml(s.status)}</em> <b>${Math.round(s.taskPct * 100)}%</b></button>`).join('')}</div>` : ''}

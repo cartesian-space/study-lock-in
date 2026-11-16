@@ -3620,3 +3620,10 @@ button, a, input, select, textarea, .block-header, .day-pill {
 }
 .task-text .task-check-label { display: block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; color: var(--text-muted); margin-bottom: 2px; }
 .task-item.done .task-text .task-check { text-decoration: line-through; opacity: 0.8; }
+
+/* Logo mark: never let the header's flex layout squeeze it (it shrank to 26px with an 8px glyph on phones) */
+.logo-icon { flex: 0 0 auto; display: grid; place-items: center; }
+.logo-icon svg { width: 100%; height: 100%; }
+@media (max-width: 768px) {
+  .logo-icon { width: 40px; height: 40px; padding: 9px; }
+}

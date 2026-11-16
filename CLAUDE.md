@@ -219,7 +219,6 @@ progress that has not been exported yet.
    * Nodes = sections; edges = section order within a syllabus + each section's `requires`. A node is **done** when all non-bonus tasks are checked (`sectionProgress()`); a prerequisite counts as satisfied if done, if its syllabus has `status: done`, or if it no longer exists.
    * **Graph** and **List** show only the selected syllabus. Graph is a serpentine path (`_renderMapSnake()`): row 1 left→right, row 2 right→left, …, one continuous 1 → 2 → 3 line, row length fitted to the card width (re-flows on resize, never scrolls sideways). No `requires` edges here.
    * **Aerial** (`_renderMapAerial()`) is the only cross-syllabus view: one node per syllabus, `requires` aggregated into syllabus-level edges; `queued`/`done` syllabi appear as chips below.
-   * "Up next" is scoped the same way (selected syllabus in Graph/List, all active syllabi in Aerial).
    * It re-renders from `updateStats()` and `switchDay()`; keep it cheap (no DOM work beyond the map host).
    * Phones (≤720px) default to the list view in Auto; keep every view working.
 
