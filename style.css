@@ -3650,3 +3650,37 @@ button, a, input, select, textarea, .block-header, .day-pill {
   .task-btn > span:not(.comment-count) { display: none; }
   .task-btn svg { width: 20px; height: 20px; }
 }
+
+/* ── Matrices in worksheets: real rows × columns with book-style brackets ── */
+.task-text .mx {
+  position: relative; display: inline-flex; vertical-align: middle;
+  margin: 4px 4px; padding: 3px 9px; max-width: 100%; overflow-x: auto;
+}
+.task-text .mx::before, .task-text .mx::after {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 6px;
+  border: 1.5px solid currentColor; opacity: 0.75;
+}
+.task-text .mx::before { left: 0; border-right: none; border-radius: 2px 0 0 2px; }
+.task-text .mx::after { right: 0; border-left: none; border-radius: 0 2px 2px 0; }
+.task-text .mx-grid { display: grid; column-gap: 14px; row-gap: 2px; align-items: center; }
+.task-text .mx-cell {
+  font-family: var(--font-mono); font-size: 0.86em; line-height: 1.45;
+  text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.task-text .task-check .mx { margin: 3px 3px; }
+@media (max-width: 768px) {
+  .task-text .mx { padding: 2px 7px; }
+  .task-text .mx-grid { column-gap: 10px; }
+}
+
+/* Worksheet layout: one block per problem, number in a gutter, extra room when a line holds a matrix */
+.task-text .task-intro { display: block; margin-bottom: 4px; }
+.task-text .task-line { display: flex; align-items: baseline; gap: 8px; margin: 3px 0; }
+.task-text .task-line .task-num { flex: 0 0 auto; min-width: 2.1em; margin-right: 0; }
+.task-text .task-line-body { flex: 1; min-width: 0; line-height: 1.6; }
+.task-text .task-line:has(.mx) { margin: 10px 0; align-items: center; }
+.task-text .task-line:has(.mx) .task-num { align-self: center; }
+.task-text .mx { margin: 6px 6px; vertical-align: middle; }
+.task-text .mx + .mx { margin-left: 2px; }
+.task-text .task-check .task-line:first-of-type { margin-top: 2px; }
+.task-text .task-check .task-line:has(.mx) { margin: 8px 0; }

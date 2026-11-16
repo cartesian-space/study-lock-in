@@ -1431,10 +1431,67 @@ function renderActivePanel() {
  * numbered problems "(1) … (2) …" each start on their own line, and the "✔ Check:" answer key becomes
  * its own block with one answer per line. "(N)" only splits after whitespace, so f′(3) or h(1) stay intact.
  */
+/**
+ * Escape text and draw every well-formed matrix literal "[[a, b], [c, d]]" as a real grid
+ * (rows × columns with book-style brackets). Anything that isn't a rectangular, flat matrix stays as text.
+ */
+function renderMatrices(text) {
+  let out = '', i = 0;
+  while (i < text.length) {
+    const start = text.indexOf('[[', i);
+    if (start < 0) break;
+    // find the matching close bracket
+    let depth = 0, end = -1;
+    for (let k = start; k < text.length; k++) {
+      if (text[k] === '[') depth++;
+      else if (text[k] === ']' && --depth === 0) { end = k; break; }
+    }
+    const grid = end > 0 ? _parseMatrix(text.slice(start, end + 1)) : null;
+    if (!grid) { out += escapeHtml(text.slice(i, start + 2)); i = start + 2; continue; }
+    out += escapeHtml(text.slice(i, start));
+    const cols = grid[0].length, raw = text.slice(start, end + 1);
+    out += `<span class="mx" role="img" aria-label="matrix ${escapeHtml(raw)}" title="${escapeHtml(raw)}"><span class="mx-grid" style="grid-template-columns:repeat(${cols},auto)">`
+      + grid.flat().map(c => `<span class="mx-cell">${escapeHtml(c)}</span>`).join('') + '</span></span>';
+    i = end + 1;
+  }
+  return out + escapeHtml(text.slice(i));
+}
+
+function _parseMatrix(src) {
+  const inner = src.slice(1, -1).trim();                // "[a, b], [c, d]"
+  const rows = [];
+  let k = 0;
+  while (k < inner.length) {
+    const open = inner.indexOf('[', k);
+    if (open < 0) { if (inner.slice(k).replace(/[\s,]/g, '')) return null; break; }
+    if (inner.slice(k, open).replace(/[\s,]/g, '')) return null;   // junk between rows
+    const close = inner.indexOf(']', open);
+    if (close < 0) return null;
+    const body = inner.slice(open + 1, close);
+    if (body.includes('[')) return null;                // deeper nesting → not a 2-D matrix
+    const cells = body.split(',').map(c => c.trim());
+    if (cells.some(c => !c || c.length > 16)) return null;
+    rows.push(cells);
+    k = close + 1;
+  }
+  if (!rows.length || rows.some(r => r.length !== rows[0].length)) return null;
+  return rows;
+}
+
 function formatTaskText(text) {
-  const html = escapeHtml(text || '');
-  const num = /(^|\s)\((\d{1,2})\)\s/g;
-  const lines = body => body.replace(num, (m, pre, n, off) => `${off === 0 ? '' : '<br>'}<b class="task-num">(${n})</b> `);
+  const raw = text || '';
+  // Matrices render as grids in worksheets only (Code/Read tasks may contain literal array syntax).
+  const html = /^Worksheet\b/.test(raw) ? renderMatrices(raw) : escapeHtml(raw);
+  // Each "(N)" problem becomes its own block line (number in a fixed gutter); any intro text stays above.
+  const lines = body => {
+    const parts = body.split(/(?:^|\s)\((\d{1,2})\)\s/);      // [intro, n1, text1, n2, text2, …]
+    if (parts.length === 1) return body;
+    let out = parts[0].trim() ? `<span class="task-intro">${parts[0].trim()}</span>` : '';
+    for (let i = 1; i < parts.length; i += 2) {
+      out += `<span class="task-line"><b class="task-num">(${parts[i]})</b><span class="task-line-body">${parts[i + 1].trim()}</span></span>`;
+    }
+    return out;
+  };
   const at = html.indexOf('✔ Check:');
   if (at < 0) return lines(html);
   const main = html.slice(0, at).trimEnd();

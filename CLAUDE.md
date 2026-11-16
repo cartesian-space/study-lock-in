@@ -150,6 +150,7 @@ The task view formats task text with `formatTaskText()` (display only), so write
 * **Prefix the task type**: `Watch: …`, `Read: …`, `Worksheet — <title>. By hand, on paper: …`, `Code (NumPy, 10 min): …`, `Reflect (journal): …`.
 * **Number questions as `(N)` with a space before and after**: `… on paper: (1) Compute AB. (2) Is AB = BA? (3) …` — each `(N)` renders on its own line. Use `(N)` only for question numbers; notation like `f′(3)` or `(1,1)` is fine because it isn't preceded by a space.
 * **Answers go at the end after `✔ Check:`**, numbered the same way and separated by `; ` — `✔ Check: (1) [[19, 22], [43, 50]]; (2) no — not commutative`. This renders as a separate answer block, one answer per line.
+* **Write matrices as nested lists** `[[a, b], [c, d]]` (rows of equal length, short entries): inside `Worksheet` tasks `renderMatrices()` draws them as real row × column grids with book-style brackets (display only). Block/ragged notation like `[[W, b], [0, 0, 1]]` is left as text. Vectors `[a, b]` stay inline.
 * **Compute answers, don't type them**: generate worksheet numbers/answers with a script (NumPy) and audit any hand-written answer before committing.
 * Put links in `resources:`, never inline in the text; mark optional depth as `bonus: true`.
 
