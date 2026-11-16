@@ -1745,6 +1745,19 @@ function formatTaskText(text, isWorksheet = /^Worksheet\b/.test(text || '')) {
   return `${lines(main)}<details class="task-answers" onclick="event.stopPropagation()"><summary>Show answers</summary><span class="task-check">${lines(check)}</span></details>`;
 }
 
+// ===== LINK FAVICONS =====
+// The site's favicon via DuckDuckGo's icon service (only the domain is sent, no referrer); cached by the
+// browser. Falls back to the generic external-link icon when offline or when the site has none.
+const LINK_FALLBACK_SVG = '<svg class="res-fallback" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+function linkIcon(url) {
+  let host = '';
+  try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { return LINK_FALLBACK_SVG; }
+  if (!host || !/^[a-z0-9.-]+$/i.test(host)) return LINK_FALLBACK_SVG;
+  const src = `https://icons.duckduckgo.com/ip3/${host}.ico`;
+  return `<img class="res-favicon" src="${src}" alt="" width="14" height="14" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+    onerror="this.outerHTML=LINK_FALLBACK_SVG">`;
+}
+
 // ===== RENDER: SINGLE TASK =====
 function renderTask(task, dayId) {
   const checked = state.checked[task.id] ? 'checked' : '';
@@ -1761,12 +1774,12 @@ function renderTask(task, dayId) {
     resourceHtml = '<div class="task-resources">';
     builtInRes.forEach(r => {
       resourceHtml += `<a href="${escapeHtml(r.url)}" target="_blank" rel="noopener" class="resource-link">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        ${linkIcon(r.url)}
         ${escapeHtml(r.label)}</a>`;
     });
     customRes.forEach((r, idx) => {
       resourceHtml += `<a href="${escapeHtml(r.url)}" target="_blank" rel="noopener" class="resource-link custom-resource" onclick="event.stopPropagation()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        ${linkIcon(r.url)}
         ${escapeHtml(r.label)}
         <span class="resource-remove" onclick="event.preventDefault();event.stopPropagation();removeCustomResource('${task.id}', ${idx})" title="Remove">×</span></a>`;
     });
