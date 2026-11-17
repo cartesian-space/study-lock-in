@@ -4259,3 +4259,6 @@ body[data-view="practice"] #hourHeatmap { display: none !important; }
   .practice-view { margin-top: 14px; }
   .task-btn.practice-open-btn { margin-left: 0; }
 }
+
+/* Study: "Practice again" only appears once a task is done (or while it's already flagged) */
+.section-card .task-item:not(.done) .practice-btn:not(.on) { display: none; }

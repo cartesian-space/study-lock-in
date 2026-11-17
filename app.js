@@ -1884,8 +1884,8 @@ function togglePractice(taskId, btn) {
   if (btn) {
     btn.classList.toggle('on', open);
     btn.setAttribute('aria-pressed', String(open));
-    btn.title = open ? 'In practice — click to remove' : 'Mark for practice';
-    const lbl = btn.querySelector('span'); if (lbl) lbl.textContent = open ? 'Practicing' : 'Practice';
+    btn.title = open ? 'In practice — click to remove' : 'Practice again';
+    const lbl = btn.querySelector('span'); if (lbl) lbl.textContent = open ? 'Practicing' : 'Practice again';
   }
   updatePracticeCount();
   showToast(open ? '🎯 Added to Practice' : 'Removed from Practice');
@@ -2107,7 +2107,7 @@ function renderTask(task, dayId, num = '') {
         <input type="checkbox" class="task-checkbox" ${checked} onchange="toggleTask('${task.id}', this)">
         ${ICON.done}<span class="when-todo">Mark done</span><span class="when-done">Done</span>
       </label>
-      <button class="task-btn practice-btn${practiceOpen ? ' on' : ''}" onclick="event.stopPropagation(); togglePractice('${task.id}', this)" title="${practiceOpen ? 'In practice — click to remove' : 'Mark for practice'}" aria-label="Mark for practice" aria-pressed="${practiceOpen}">${ICON.practice}<span>${practiceOpen ? 'Practicing' : 'Practice'}</span></button>
+      <button class="task-btn practice-btn${practiceOpen ? ' on' : ''}" onclick="event.stopPropagation(); togglePractice('${task.id}', this)" title="${practiceOpen ? 'In practice — click to remove' : 'Practice again'}" aria-label="Practice again" aria-pressed="${practiceOpen}">${ICON.redo}<span>${practiceOpen ? 'Practicing' : 'Practice again'}</span></button>
       <button class="task-btn comment-trigger ${hasComments}" onclick="event.preventDefault(); event.stopPropagation(); toggleCommentCard('${task.id}')" title="Comment" aria-label="Comment">
         ${ICON.comment}<span class="lbl-comment">Comment</span><span class="comment-count">${commentCount || ''}</span>
       </button>
