@@ -4262,3 +4262,13 @@ body[data-view="practice"] #hourHeatmap { display: none !important; }
 
 /* Study: "Practice again" only appears once a task is done (or while it's already flagged) */
 .section-card .task-item:not(.done) .practice-btn:not(.on) { display: none; }
+
+/* Study hours: 30 day rows — shorter rows, field height follows the row count */
+.hour-heatmap { --hh-row: 16px; --hh-rows: 30; }
+.hh-days { grid-auto-rows: var(--hh-row) !important; }
+.hh-day { height: var(--hh-row) !important; font-size: 0.66rem !important; line-height: var(--hh-row); }
+.hh-field { height: calc(var(--hh-row) * var(--hh-rows)) !important; }
+@media (max-width: 768px) {
+  .hour-heatmap { --hh-row: 13px; }
+  .hh-day { font-size: 0.56rem !important; }
+}

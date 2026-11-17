@@ -3398,7 +3398,7 @@ window.addEventListener('resize', () => {
   _heatmapResizeTimer = setTimeout(() => { if (document.getElementById('heatmapBody') && state) renderHeatmap(); }, 150);
 });
 
-// ===== STUDY HOURS: last 7 days × 24 hours, from each activity entry's local time =====
+// ===== STUDY HOURS: last 30 days × 24 hours, from each activity entry's local time =====
 function _fmtHour(h) { const s = h < 12 ? 'am' : 'pm'; const x = h % 12 === 0 ? 12 : h % 12; return `${x} ${s}`; }
 
 function renderHourHeatmap(activityLog) {
@@ -3410,7 +3410,8 @@ function renderHourHeatmap(activityLog) {
   const dayKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const days = [];                                              // oldest first → today last
-  for (let i = 6; i >= 0; i--) { const d = new Date(today); d.setDate(d.getDate() - i); days.push(d); }
+  const HH_DAYS = 30;
+  for (let i = HH_DAYS - 1; i >= 0; i--) { const d = new Date(today); d.setDate(d.getDate() - i); days.push(d); }
   const grid = {}; days.forEach(d => { grid[dayKey(d)] = Array.from({ length: 24 }, () => ({ n: 0, topics: [] })); });
 
   for (const e of activityLog || []) {
@@ -3472,8 +3473,8 @@ function renderHourHeatmap(activityLog) {
 
   host.innerHTML = `
     <div class="hh-header">
-      <h3 class="heatmap-title">Study hours <span class="heatmap-range">last 7 days</span></h3>
-      <span class="hh-summary">${total ? `${total} item${total > 1 ? 's' : ''} on ${activeDays} day${activeDays > 1 ? 's' : ''} · most active around <b>${_fmtHour(peak)}</b>` : 'Nothing logged in the last 7 days yet'}</span>
+      <h3 class="heatmap-title">Study hours <span class="heatmap-range">last ${HH_DAYS} days</span></h3>
+      <span class="hh-summary">${total ? `${total} item${total > 1 ? 's' : ''} on ${activeDays} day${activeDays > 1 ? 's' : ''} · most active around <b>${_fmtHour(peak)}</b>` : `Nothing logged in the last ${HH_DAYS} days yet`}</span>
     </div>
     <div class="hh-wrap">${cells}</div>`;
   _drawHourField(host.querySelector('.hh-canvas'), days.map(d => grid[dayKey(d)].map(c => c.n)));
