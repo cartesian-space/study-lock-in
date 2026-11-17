@@ -1,5 +1,5 @@
 # Study Lock-In — activity log (powers the contribution heatmap)
-# Exported: 2026-11-17T09:36:51.731Z
+# Exported: 2026-11-17T16:55:16.115Z
 - t: "2026-01-05T11:21:00Z"
   syllabus: "Work & Infra"
   topic: "HAProxy health check tuning — reducing false positive backend downs"
@@ -967,4 +967,20 @@
 - t: "2026-11-17T09:31:28.938Z"
   syllabus: "Math for ML/DL/Neural Networks"
   topic: "Reflect (journal): Why does 'layer order matters' follow directly from AB ≠ BA?"
+  action: "done"
+- t: "2026-11-17T16:31:03.733Z"
+  syllabus: "Math for ML/DL/Neural Networks"
+  topic: "Watch: StatQuest — Cosine Similarity (~10 min)."
+  action: "done"
+- t: "2026-11-17T16:31:13.963Z"
+  syllabus: "Math for ML/DL/Neural Networks"
+  topic: "Watch: 3B1B Ch.9 — Dot products and duality (~14 min)."
+  action: "done"
+- t: "2026-11-17T16:42:02.166Z"
+  syllabus: "Math for ML/DL/Neural Networks"
+  topic: "Worksheet — compute. By hand, on paper: (1) a=[3, 4], b=[1, 2]: a·b. (2) ‖a‖, ‖b‖, and the angle θ from a·b = ‖a‖‖b‖cos θ. (3) Find a vector orthogonal to a. (4) cos θ for θ = 0°, 90°, 180° — and what each means for 'similarity'. ✔ Check: (1) 11; (2) 5, √5≈2.236, θ≈10.3°; (3) e.g. [−4,3] (dot = 0); (4) 1 same direction, 0 unrelated, −1 opposite"
+  action: "done"
+- t: "2026-11-17T16:52:02.389Z"
+  syllabus: "Math for ML/DL/Neural Networks"
+  topic: "Worksheet — ML meanings. By hand, on paper: (1) Neuron: w=[0.5, -0.3, 0.8], x=[1, 2, 0.5]. Raw score w·x? (2) Toy embeddings cat=[0.9, 0.8, 0.1], dog=[0.85, 0.75, 0.2], car=[0.1, 0.2, 0.95]: cosine(cat,dog) and cosine(cat,car). (3) Double the length of 'cat'. Does its cosine with 'dog' change? Does its dot product? ✔ Check: (1) 0.3; (2) 0.996 vs 0.293 — cat is 'closer' to dog; (3) cosine unchanged (length-invariant); dot product doubles"
   action: "done"
