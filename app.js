@@ -890,6 +890,17 @@ function slugify(s) {
  * Internally each section is a "day" with blocks (current schema → exactly one implicit block),
  * so the rest of the app keeps working on state.days[].blocks[].tasks[].
  */
+/** Lenient `practice:` parser — files without it, or with hand-written values, still load. null = not flagged. */
+function _parsePracticeFlag(v) {
+  if (v === undefined || v === null || v === '') return null;
+  if (v === true || v === 1) return true;
+  if (v === false || v === 0) return false;
+  const t = String(v).trim().toLowerCase();
+  if (['true', 'yes', 'y', 'open', 'todo', '1'].includes(t)) return true;
+  if (['false', 'no', 'n', 'resolved', 'done', '0'].includes(t)) return false;
+  return null;
+}
+
 function syllabusToState(raw) {
   raw = raw || {};
   const meta = { ...(raw.meta || {}) };
@@ -898,6 +909,7 @@ function syllabusToState(raw) {
   const rawState = raw.state || {};
   const days = [];
   const checked = {}, doneAt = {}, comments = {}, journal = {}, timeLog = {}, customResources = {};
+  const practice = {};   // taskId → { open: bool, at: ISO } (YAML: practice: true|false, practice_at)
 
   const readTask = (rawTask, taskId, forceBonus) => {
     rawTask = rawTask || {};
@@ -905,6 +917,8 @@ function syllabusToState(raw) {
     if (rawTask.done_at) doneAt[taskId] = rawTask.done_at;
     if (rawTask.comments && rawTask.comments.length) comments[taskId] = [...rawTask.comments];
     if (rawTask.custom_resources && rawTask.custom_resources.length) customResources[taskId] = [...rawTask.custom_resources];
+    const pr = _parsePracticeFlag(rawTask.practice);
+    if (pr !== null) practice[taskId] = { open: pr, at: rawTask.practice_at ? String(rawTask.practice_at) : '' };
     return {
       id: taskId,
       text: rawTask.text || '',
@@ -962,6 +976,7 @@ function syllabusToState(raw) {
     doneAt,
     comments,
     customResources,
+    practice,
     journal,
     timeLog,
     activeDay: pick(rawState.active_section, rawState.active_day),
@@ -1049,6 +1064,7 @@ function getSyllabusState(key) {
     timeLog: { ...base.timeLog, ...(o.timeLog || {}) },
     comments: { ...base.comments, ...(o.comments || {}) },
     customResources: { ...base.customResources, ...(o.customResources || {}) },
+    practice: { ...(base.practice || {}), ...(o.practice || {}) },
     activeDay: ids.has(o.activeDay) ? o.activeDay : base.activeDay,
     journalDay: ids.has(o.journalDay) ? o.journalDay : base.journalDay,
     startDate: o.startDate || base.startDate,
@@ -1069,6 +1085,17 @@ function loadStateForSyllabus(key) {
 function postEvent(event) {
   console.log('[local-event] apply:', event.op, event);
   if (!state) return Promise.resolve();
+
+  // Events may target another syllabus (e.g. from the Practice view): apply them to that syllabus's
+  // state and save it under its own key, then restore the active one.
+  if (event.syllabus && event.syllabus !== _activeSyllabusKey) {
+    const prevState = state, prevKey = _activeSyllabusKey;
+    state = getSyllabusState(event.syllabus);
+    _activeSyllabusKey = event.syllabus;
+    try { postEvent({ ...event, syllabus: undefined }); }
+    finally { state = prevState; _activeSyllabusKey = prevKey; }
+    return Promise.resolve();
+  }
 
   const op = event.op;
   if (op === 'task') {
@@ -1120,6 +1147,9 @@ function postEvent(event) {
       const b = (d.blocks || []).find(blk => blk.id === event.id);
       if (b) { for (const k of ['title', 'badge', 'icon', 'isBonus']) if (k in event) b[k] = event[k]; break; }
     }
+  } else if (op === 'practice_set') {
+    if (!state.practice) state.practice = {};
+    state.practice[event.id] = { open: !!event.open, at: event.at || new Date().toISOString() };
   } else if (op === 'activity_add') {
     addLocalActivity(event.entry);
   } else if (op === 'activity_rm') {
@@ -1338,20 +1368,20 @@ function renderApp() {
           <nav class="view-switch" aria-label="View">
             <a href="#study" data-view="study" onclick="setView('study'); return false;">Study</a>
             <a href="#overview" data-view="overview" onclick="setView('overview'); return false;">Overview</a>
+            <a href="#practice" data-view="practice" onclick="setView('practice'); return false;">Practice<span class="practice-count" id="practiceCount"></span></a>
           </nav>
         </div>
         <div class="header-right">
           <div class="header-stat"><span class="stat-label">Overall</span><span class="stat-value" id="overallPercent">0%</span></div>
           <div class="header-stat header-stat-streak"><span class="stat-label">Streak</span><span class="stat-value" id="streakCount">0 🔥</span></div>
-          <div class="syllabus-switcher" id="syllabusSwitcher" title="Switch syllabus">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-            <select id="syllabusSelect" title="Switch active syllabus"></select>
-          </div>
           <div class="app-menu" id="appMenu">
             <button class="app-menu-btn" id="appMenuBtn" onclick="toggleAppMenu(event)" title="Menu" aria-haspopup="true" aria-expanded="false">
               <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
             </button>
             <div class="app-menu-pop" role="menu" hidden>
+              <div class="app-menu-label">Syllabus</div>
+              <div class="app-menu-syllabi" id="appMenuSyllabi"></div>
+              <div class="app-menu-sep"></div>
               <button class="app-menu-item" id="themeToggle" role="menuitem">
                 <svg class="theme-icon icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                 <svg class="theme-icon icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
@@ -1477,6 +1507,8 @@ function renderApp() {
     <div class="hour-heatmap" id="hourHeatmap"></div>
 
 
+    <section class="practice-view view-practice-only" id="practiceView"></section>
+
     <div class="study-layout view-study-only">
       <nav class="day-nav" id="dayNav" aria-label="Sections"></nav>
       <div class="study-main">
@@ -1520,20 +1552,23 @@ function renderApp() {
 const VIEW_KEY = 'study-lock-in:view';
 function getView() {
   const h = (location.hash || '').replace('#', '');
-  if (h === 'study' || h === 'overview') return h;
-  return localStorage.getItem(VIEW_KEY) === 'overview' ? 'overview' : 'study';
+  if (h === 'study' || h === 'overview' || h === 'practice') return h;
+  const v = localStorage.getItem(VIEW_KEY);
+  return v === 'overview' || v === 'practice' ? v : 'study';
 }
 function applyView() {
   const v = getView();
   document.body.dataset.view = v;
   if (v === 'overview') requestAnimationFrame(() => renderHourHeatmap());   // canvas needs a visible size
+  if (v === 'practice') renderPractice();
+  updatePracticeCount();
   document.querySelectorAll('.view-switch a').forEach(a => {
     a.classList.toggle('on', a.dataset.view === v);
     a.setAttribute('aria-current', a.dataset.view === v ? 'page' : 'false');
   });
 }
 function setView(v) {
-  if (v !== 'study' && v !== 'overview') return;
+  if (!['study', 'overview', 'practice'].includes(v)) return;
   localStorage.setItem(VIEW_KEY, v);
   if (location.hash !== '#' + v) history.pushState(null, '', '#' + v);
   applyView();
@@ -1550,7 +1585,18 @@ function toggleAppMenu(e) {
   const open = pop.hidden;
   pop.hidden = !open;
   document.getElementById('appMenuBtn')?.setAttribute('aria-expanded', String(open));
-  if (open) _syncMenuStates();
+  if (open) { _syncMenuStates(); _renderMenuSyllabi(); }
+}
+/** Syllabus picker inside the ⋯ menu (replaces the header dropdown on every screen size). */
+function _renderMenuSyllabi() {
+  const host = document.getElementById('appMenuSyllabi');
+  if (!host) return;
+  const all = getEmbeddedSyllabi();
+  host.innerHTML = Object.keys(all).map(k => {
+    const on = k === _activeSyllabusKey, t = all[k]?.meta?.title || k;
+    return `<button class="app-menu-item syllabus-item${on ? ' on' : ''}" role="menuitemradio" aria-checked="${on}" onclick="closeAppMenu(); ${on ? '' : `switchSyllabus('${_jsq(k)}')`}">
+      <span class="syllabus-dot" style="background:${syllabusColor(k, all[k]?.meta)}"></span><span class="syllabus-name">${escapeHtml(t)}</span>${on ? '<i class="syllabus-check">✓</i>' : ''}</button>`;
+  }).join('');
 }
 function closeAppMenu() {
   const pop = document.querySelector('#appMenu .app-menu-pop');
@@ -1817,6 +1863,157 @@ function linkIcon(url) {
     onerror="this.outerHTML=LINK_FALLBACK_SVG">`;
 }
 
+const TASK_ICONS = {
+    done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    comment: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+    practice: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>',
+    redo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+    link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
+  };
+
+// ===== PRACTICE: tasks flagged for another pass, across every syllabus =====
+let practiceComposeKey = null;      // "<syllabus>|<taskId>" whose comment box is open
+
+/** Study toolbar button: flag / unflag the task for practice (active syllabus). */
+function togglePractice(taskId, btn) {
+  const open = !state.practice?.[taskId]?.open;
+  postEvent({ op: 'practice_set', id: taskId, open });
+  if (btn) {
+    btn.classList.toggle('on', open);
+    btn.setAttribute('aria-pressed', String(open));
+    btn.title = open ? 'In practice — click to remove' : 'Mark for practice';
+    const lbl = btn.querySelector('span'); if (lbl) lbl.textContent = open ? 'Practicing' : 'Practice';
+  }
+  updatePracticeCount();
+  showToast(open ? '🎯 Added to Practice' : 'Removed from Practice');
+}
+
+/** Every flagged task in every syllabus (live state for the active one, saved progress for the rest). */
+function collectPractice() {
+  const all = getEmbeddedSyllabi(), out = [];
+  for (const key of Object.keys(all)) {
+    const st = key === _activeSyllabusKey ? state : getSyllabusState(key);
+    const meta = st.meta || {};
+    for (const day of st.days || []) for (const b of day.blocks || []) for (const task of b.tasks || []) {
+      const pr = st.practice?.[task.id];
+      if (!pr) continue;
+      out.push({ key, st, meta, color: syllabusColor(key, meta), day, task, open: !!pr.open, at: pr.at || '' });
+    }
+  }
+  return out;
+}
+
+function updatePracticeCount() {
+  const el = document.getElementById('practiceCount');
+  if (!el) return;
+  const n = collectPractice().filter(p => p.open).length;
+  el.textContent = n ? String(n) : '';
+}
+
+/** Practice page: grouped by syllabus (most recently touched first), newest items first within a group. */
+function renderPractice() {
+  const host = document.getElementById('practiceView');
+  if (!host || !state) return;
+  const items = collectPractice();
+  const groups = {};
+  items.forEach(it => { (groups[it.key] = groups[it.key] || []).push(it); });
+  const byRecent = (a, b) => (b.at || '').localeCompare(a.at || '');
+  const order = Object.keys(groups).sort((a, b) => byRecent(groups[a].slice().sort(byRecent)[0], groups[b].slice().sort(byRecent)[0]));
+  const openCount = items.filter(i => i.open).length;
+
+  let html = `<div class="practice-head">
+      <h2>Practice</h2>
+      <p>${openCount ? `${openCount} item${openCount > 1 ? 's' : ''} to practise across ${order.length} syllabus${order.length > 1 ? 'es' : ''}.` : 'Nothing to practise right now.'}
+        Flag any task with <b>Practice</b> in the Study view to bring it here.</p>
+    </div>`;
+  if (!items.length) {
+    html += `<div class="practice-empty">🎯<br>No practice items yet.<br><span>In Study, use the target button on a task — worksheets you want to redo, ideas to revisit.</span></div>`;
+  }
+  for (const key of order) {
+    const list = groups[key];
+    const open = list.filter(i => i.open).sort(byRecent), done = list.filter(i => !i.open).sort(byRecent);
+    const g = list[0];
+    html += `<section class="practice-group" style="--c:${g.color}">
+      <h3 class="practice-group-title"><span class="syllabus-dot"></span>${escapeHtml(g.meta.title || key)}
+        <span class="practice-group-count">${open.length} open${done.length ? ` · ${done.length} resolved` : ''}</span></h3>
+      <div class="section-card practice-list"><div class="block-tasks">
+        ${open.map(renderPracticeItem).join('')}
+        ${done.length ? `<div class="practice-resolved-head">Resolved</div>${done.map(renderPracticeItem).join('')}` : ''}
+      </div></div>
+    </section>`;
+  }
+  host.innerHTML = html;
+}
+
+function renderPracticeItem(it) {
+  const { key, st, day, task, open, at } = it;
+  const pid = `${key}|${task.id}`;
+  const domId = 'p-' + slugify(key) + '-' + task.id;
+  const kind = taskKind(task.text);
+  const res = [...(task.resources || []), ...((st.customResources || {})[task.id] || [])];
+  const comments = (st.comments || {})[task.id] || [];
+  const composing = practiceComposeKey === pid;
+  const when = at ? new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
+  const tags = `<span class="task-kind practice-where" title="Open in Study">${escapeHtml(day.title)}</span>`
+    + (kind.label ? `<span class="task-kind kind-${kind.kind}">${escapeHtml(kind.label)}</span>` : '')
+    + (when ? `<span class="practice-when">${open ? 'added' : 'resolved'} ${escapeHtml(when)}</span>` : '');
+  const resHtml = res.length ? `<div class="task-resources">${res.map(r => `<a href="${escapeHtml(r.url)}" target="_blank" rel="noopener" class="resource-link">${linkIcon(r.url)}${escapeHtml(r.label)}</a>`).join('')}</div>` : '';
+  const AV = '<span class="comment-avatar" aria-hidden="true">' + TASK_ICONS.comment + '</span>';
+  let thread = '';
+  if (comments.length || composing) {
+    thread = `<div class="inline-comments comment-thread" onclick="event.stopPropagation()"><div class="comment-thread-head">Notes${comments.length ? ` · ${comments.length}` : ''}</div>`
+      + comments.map(c => `<div class="comment-item">${AV}<div class="comment-bubble"><div class="comment-text">${renderMatrices(String(c)).replace(/\n/g, '<br>')}</div></div></div>`).join('')
+      + (composing ? `<div class="comment-item comment-compose">${AV}<div class="comment-bubble">
+          <textarea class="comment-input" id="practiceCommentInput" rows="2" placeholder="Add a note… (Ctrl/⌘+Enter to post)"
+            onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();submitPracticeComment('${_jsq(key)}','${_jsq(task.id)}')}if(event.key==='Escape'){togglePracticeComment('${_jsq(key)}','${_jsq(task.id)}')}"></textarea>
+          <div class="comment-compose-actions"><button class="comment-submit" onclick="submitPracticeComment('${_jsq(key)}','${_jsq(task.id)}')">Post note</button>
+          <button class="resource-form-btn cancel" onclick="togglePracticeComment('${_jsq(key)}','${_jsq(task.id)}')">Cancel</button></div></div></div>` : '')
+      + '</div>';
+  }
+  const primary = open
+    ? `<button class="task-btn practice-done-btn" onclick="resolvePractice('${_jsq(key)}','${_jsq(task.id)}', true)" title="Resolved — I've got this">${TASK_ICONS.done}<span>Done</span></button>`
+    : `<button class="task-btn practice-again-btn" onclick="resolvePractice('${_jsq(key)}','${_jsq(task.id)}', false)" title="Mark for practice again">${TASK_ICONS.redo}<span>Practice again</span></button>`;
+  return `<div class="task-item practice-item${open ? '' : ' resolved'}${kind.kind ? ' kind-' + kind.kind : ''}" id="${domId}">
+    <div class="task-info">
+      <div class="task-tags">${tags}</div>
+      <span class="task-text">${formatTaskText(kind.body, kind.kind === 'worksheet')}</span>
+      ${resHtml}
+    </div>
+    <div class="task-toolbar">
+      ${primary}
+      <button class="task-btn comment-trigger${comments.length ? ' has-comments' : ''}" onclick="togglePracticeComment('${_jsq(key)}','${_jsq(task.id)}')" title="Comment" aria-label="Comment">${TASK_ICONS.comment}<span>Comment</span><span class="comment-count">${comments.length || ''}</span></button>
+      <button class="task-btn practice-open-btn" onclick="mapGo('${_jsq(key)}','${_jsq(day.id)}')" title="Open this section in Study" aria-label="Open in Study">${TASK_ICONS.link}<span>Open</span></button>
+    </div>
+    ${thread}
+  </div>`;
+}
+
+/** Done = resolved (stays listed, dimmed, with "Practice again"); open=false. Again = flag it back. */
+function resolvePractice(key, taskId, resolved) {
+  postEvent({ op: 'practice_set', syllabus: key, id: taskId, open: !resolved });
+  renderPractice(); updatePracticeCount();
+  if (key === _activeSyllabusKey) renderActivePanel();
+  showToast(resolved ? '✅ Practice resolved' : '🎯 Back in Practice');
+}
+function togglePracticeComment(key, taskId) {
+  const pid = `${key}|${taskId}`;
+  practiceComposeKey = practiceComposeKey === pid ? null : pid;
+  renderPractice();
+  if (practiceComposeKey) setTimeout(() => document.getElementById('practiceCommentInput')?.focus(), 30);
+}
+function submitPracticeComment(key, taskId) {
+  const v = (document.getElementById('practiceCommentInput')?.value || '').trim();
+  if (!v) return;
+  postEvent({ op: 'comment_add', syllabus: key, id: taskId, v });
+  practiceComposeKey = null;
+  renderPractice();
+  if (key === _activeSyllabusKey) renderActivePanel();
+  showToast('💬 Note added');
+}
+
 // ===== RENDER: SINGLE TASK =====
 function renderTask(task, dayId, num = '') {
   const checked = state.checked[task.id] ? 'checked' : '';
@@ -1827,6 +2024,7 @@ function renderTask(task, dayId, num = '') {
   const commentCount = comments.length;
   const hasComments = commentCount > 0 ? 'has-comments' : '';
   const isComposing = activeComposeTaskId === task.id;
+  const practiceOpen = !!state.practice?.[task.id]?.open;
 
   let resourceHtml = '';
   if (builtInRes.length || customRes.length) {
@@ -1891,14 +2089,7 @@ function renderTask(task, dayId, num = '') {
     commentHtml += '</div>';
   }
 
-  const ICON = {
-    done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
-    comment: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
-    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
-    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
-    link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
-    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
-  };
+  const ICON = TASK_ICONS;
 
   // Content uses the full row width; all actions (incl. marking done) live in a labelled toolbar underneath.
   const kind = taskKind(task.text);
@@ -1916,6 +2107,7 @@ function renderTask(task, dayId, num = '') {
         <input type="checkbox" class="task-checkbox" ${checked} onchange="toggleTask('${task.id}', this)">
         ${ICON.done}<span class="when-todo">Mark done</span><span class="when-done">Done</span>
       </label>
+      <button class="task-btn practice-btn${practiceOpen ? ' on' : ''}" onclick="event.stopPropagation(); togglePractice('${task.id}', this)" title="${practiceOpen ? 'In practice — click to remove' : 'Mark for practice'}" aria-label="Mark for practice" aria-pressed="${practiceOpen}">${ICON.practice}<span>${practiceOpen ? 'Practicing' : 'Practice'}</span></button>
       <button class="task-btn comment-trigger ${hasComments}" onclick="event.preventDefault(); event.stopPropagation(); toggleCommentCard('${task.id}')" title="Comment" aria-label="Comment">
         ${ICON.comment}<span class="lbl-comment">Comment</span><span class="comment-count">${commentCount || ''}</span>
       </button>
@@ -2606,6 +2798,7 @@ function resetAll() {
   state.timeLog = {};
   state.comments = {};
   state.customResources = {};
+  state.practice = {};
   saveLocalState();
   activeComposeTaskId = null;
   renderApp();
@@ -2703,6 +2896,11 @@ function stateToYaml(s) {
       if (task.bonus) lines.push('        bonus: true');
       const doneAt = s.doneAt?.[task.id];
       if (isDone && doneAt) lines.push(`        done_at: ${_yq(doneAt)}`);
+      const pr = s.practice?.[task.id];
+      if (pr) {
+        lines.push(`        practice: ${pr.open ? 'true' : 'false'}`);
+        if (pr.at) lines.push(`        practice_at: ${_yq(pr.at)}`);
+      }
       const cmts = s.comments?.[task.id] || [];
       if (cmts.length) {
         lines.push('        comments:');
@@ -2755,7 +2953,7 @@ function importSyllabusFile() {
         if (Array.isArray(imported.days)) {
           const legacyMap = getLegacyIdMap(_activeSyllabusKey);
           const isLegacyBackup = !!legacyMap && imported.days.some(d => legacyMap[d.id]);
-          for (const f of ['checked', 'doneAt', 'journal', 'timeLog', 'comments', 'customResources']) {
+          for (const f of ['checked', 'doneAt', 'journal', 'timeLog', 'comments', 'customResources', 'practice']) {
             if (!imported[f] || typeof imported[f] !== 'object') imported[f] = {};
           }
           if (isLegacyBackup) {

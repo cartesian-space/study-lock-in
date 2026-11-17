@@ -137,6 +137,8 @@ sections:
         done: true
         bonus: true                # optional; bonus tasks never block section completion
         done_at: "2026-11-05T09:10:10Z"
+        practice: true             # optional; true = in Practice, false = practised/resolved, absent = never flagged
+        practice_at: "2026-11-17T09:00:00.000Z"   # when it was last flagged / resolved (sorting)
         comments: ["..."]
         resources: [{ label: "...", url: "..." }]
         custom_resources: [{ label: "...", url: "..." }]
@@ -152,6 +154,8 @@ The task view formats task text with `formatTaskText()` (display only), so write
 * **Write matrices as nested lists** `[[a, b], [c, d]]` (rows of equal length, short entries): inside `Worksheet` tasks `renderMatrices()` draws them as real row × column grids with book-style brackets (display only). Block/ragged notation like `[[W, b], [0, 0, 1]]` is left as text. Vectors `[a, b]` stay inline.
 * **Compute answers, don't type them**: generate worksheet numbers/answers with a script (NumPy) and audit any hand-written answer before committing.
 * Put links in `resources:`, never inline in the text; mark optional depth as `bonus: true`.
+
+`practice` is parsed leniently by `_parsePracticeFlag()` (true/false, "yes"/"no", "resolved", …; unknown values are ignored), so older or hand-edited files always load. Files without practice fields re-export byte-identical.
 
 Internally each section is still a `state.days[]` entry with a single implicit block, and task ids are
 `<section-id>-t<N>` (position within the section). Reordering tasks inside a section only matters for
@@ -188,25 +192,27 @@ progress that has not been exported yet.
   journal: { "vectors": "Notes..." },
   timeLog: { "vectors": 1800 },
   comments: { "vectors-t1": ["comment text"] },
-  customResources: { "vectors-t1": [{ label: "Link", url: "https://..." }] }
+  customResources: { "vectors-t1": [{ label: "Link", url: "https://..." }] },
+  practice: { "vectors-t1": { open: true, at: "2026-11-17T09:00:00.000Z" } }
 }
 ```
 
 ---
 
-## 🧭 Page Structure: two views
+## 🧭 Page Structure: three views
 
-The page has two views, switched by the header's **Study | Overview** control (`setView()` / `applyView()`; URL hash `#study` / `#overview`, remembered in `study-lock-in:view`; browser back/forward works). `body[data-view]` drives visibility via CSS:
+The page has three views, switched by the header's **Study | Overview | Practice** control (`setView()` / `applyView()`; URL hash `#study` / `#overview` / `#practice`, remembered in `study-lock-in:view`; browser back/forward works). `body[data-view]` drives visibility via CSS:
 
 * **Study** (default) — `.study-layout`: section list (`#dayNav`, a sticky left sidebar on PC ≥1000px, a scrolling pill row on smaller screens) + `.study-main` (the open section's tasks + "Notes for this section"). The journal always follows the open section (`switchDay()` sets `journalDay = activeDay`).
 * **Overview** — `.overview-head`, `#statsGrid`, `#activityHeatmap` (with **+ Log**), and `#hourHeatmap` (**Study hours**: last 7 days × 24 local hours, `renderHourHeatmap()`, re-rendered from `renderHeatmap()`; counts `done` entries per hour, `undone` cancels one. Drawn as a filled-contour weather map on a canvas by `_drawHourField()`: Gaussian-smoothed field → bilinear interpolation → 9 flat levels `--hh0…--hh8` (the yearly heatmap palette) with thin contour lines, no blur; redrawn on Overview show, resize and theme change. An invisible 7×24 grid on top keeps the tooltips). (The syllabi map was removed; the Study sidebar replaced it.)
-* **Header**: title, view switch, Overall %, syllabus switcher, and one **⋯ menu** (`#appMenu`) holding theme, music, zen, Export/Import, reset and lock (same element ids as before, so existing handlers bind unchanged).
+* **Practice** — `#practiceView` (`renderPractice()`): every task flagged `practice` in **any** syllabus (`collectPractice()`), grouped by syllabus (most recently touched group first), newest items first; open items then a "Resolved" list. Each item: **Done** (resolve → `practice: false`), **Practice again** (back to open), **Comment**, **Open** (jumps to the section in Study). Tasks are flagged from the Study toolbar's **Practice** (target) button (`togglePractice()`). The view-switch badge (`#practiceCount`) shows open items.
+* **Header**: title, view switch, Overall %, and one **⋯ menu** (`#appMenu`) holding the **syllabus picker** (`_renderMenuSyllabi()`, all screen sizes — there is no header dropdown), theme, music, zen, Export/Import, reset and lock.
 * **Task cards**: type tag, text, links (each link chip shows the site's favicon via `linkIcon()` → `icons.duckduckgo.com/ip3/<domain>.ico`, only the domain is sent, no referrer; falls back to a generic link icon); toolbar shows **✓ Mark done** and **💬 Comment**; Copy / Edit / Add link / Delete live in a per-task ⋯ (`toggleTaskMenu()`). Worksheet answers are a closed `<details class="task-answers">` ("Show answers"). Completed tasks stay in their original position, fully visible, with a quieter done style.
 
 ## ⚠️ Critical Rules for Future Agents
 
 1. **Never Re-introduce a Server Dependency**:
-   All operations (`task`, `journal`, `time`, `comment_add`, `res_add`, etc.) must route through `postEvent(event)` and save directly into `localStorage`. Do not add `fetch('/api/...')` endpoints.
+   All operations (`task`, `journal`, `time`, `comment_add`, `res_add`, `practice_set`, etc.) must route through `postEvent(event)` and save directly into `localStorage`. Do not add `fetch('/api/...')` endpoints. To change a syllabus that isn't the active one (e.g. from Practice), pass `syllabus: '<key>'` in the event — `postEvent` applies it to that syllabus's state and saves it under its own key; it reaches YAML when that syllabus is exported.
 
 2. **Preserve Jekyll GitHub Pages Path Compatibility**:
    GitHub Pages serves project sites under a subpath (e.g. `/study-lock-in/`).

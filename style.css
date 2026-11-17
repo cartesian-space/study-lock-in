@@ -4199,3 +4199,63 @@ html.dim-mode .section-card .task-item:not(.zen-focus):hover { opacity: 0.7; fil
   .hh-inner { width: 600px; min-width: 600px; }
   .hh-axis span { font-size: 0.56rem !important; }
 }
+
+/* =====================================================================
+   PRACTICE view + syllabus picker in the ⋯ menu
+   ===================================================================== */
+body[data-view="study"] .view-practice-only,
+body[data-view="overview"] .view-practice-only,
+body[data-view="practice"] .view-study-only,
+body[data-view="practice"] .view-overview-only,
+body[data-view="practice"] #statsGrid,
+body[data-view="practice"] #activityHeatmap,
+body[data-view="practice"] #hourHeatmap { display: none !important; }
+
+/* view switch: practice count badge */
+.practice-count:empty { display: none; }
+.practice-count { margin-left: 6px; display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 999px; background: var(--accent); color: var(--accent-text); font-size: 0.66rem; font-weight: 700; vertical-align: 1px; }
+
+/* syllabus list inside the ⋯ menu */
+.app-menu-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); padding: 6px 10px 4px; }
+.app-menu-syllabi { max-height: 40vh; overflow-y: auto; }
+.app-menu-item.syllabus-item { gap: 10px; }
+.app-menu-item.syllabus-item .syllabus-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-menu-item.syllabus-item.on { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+.syllabus-dot { width: 9px; height: 9px; border-radius: 3px; flex: 0 0 auto; background: var(--c, var(--accent)); display: inline-block; }
+.syllabus-check { font-style: normal; color: var(--accent); font-weight: 700; }
+.app-menu-pop { min-width: 250px; max-width: min(320px, calc(100vw - 24px)); }
+
+/* Study toolbar: practice toggle */
+.task-btn.practice-btn.on { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+/* Practice page */
+.practice-view { margin-top: 22px; }
+.practice-head h2 { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; }
+.practice-head h2::after { content: ''; display: block; width: 44px; height: 3px; border-radius: 3px; background: var(--accent); opacity: 0.7; margin-top: 8px; }
+.practice-head p { color: var(--text-muted); font-size: 0.88rem; margin: 8px 0 18px; }
+.practice-empty { text-align: center; padding: 48px 20px; border: 1px dashed var(--border-hover); border-radius: 14px; color: var(--text-secondary); font-size: 1.4rem; line-height: 1.6; }
+.practice-empty span { display: block; font-size: 0.84rem; color: var(--text-muted); margin-top: 6px; }
+.practice-group { margin-bottom: 26px; }
+.practice-group-title { display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; margin: 0 0 10px; color: var(--text-primary); }
+.practice-group-title .syllabus-dot { background: var(--c); }
+.practice-group-count { margin-left: auto; font-size: 0.72rem; font-weight: 500; color: var(--text-muted); }
+.practice-list .block-tasks { display: flex; flex-direction: column; gap: 10px; }
+.practice-item .practice-where { background: var(--bg-surface) !important; color: var(--text-primary) !important; text-transform: none !important; letter-spacing: 0 !important; font-weight: 600; }
+.practice-when { margin-left: auto; font-size: 0.7rem; color: var(--text-muted); align-self: center; }
+.practice-item .task-tags { align-items: center; }
+.practice-item.resolved { background: var(--bg-surface) !important; box-shadow: none !important; }
+.practice-item.resolved .task-text { color: var(--text-muted); }
+.practice-resolved-head { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); margin: 8px 2px 0; }
+.task-btn.practice-done-btn { border-color: var(--accent-soft); color: var(--accent); }
+.task-btn.practice-done-btn:hover { background: var(--accent); color: var(--accent-text); }
+.task-btn.practice-again-btn { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+.task-btn.practice-open-btn { margin-left: auto; }
+
+/* Phones: header row 2 is the full-width three-tab switch (syllabus picker lives in ⋯ now) */
+@media (max-width: 768px) {
+  .header .view-switch { justify-self: stretch !important; display: flex !important; width: 100%; }
+  .header .view-switch a { flex: 1; text-align: center; padding: 7px 6px; }
+  .practice-view { margin-top: 14px; }
+  .task-btn.practice-open-btn { margin-left: 0; }
+}
