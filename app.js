@@ -1697,7 +1697,9 @@ function renderActivePanel() {
     <div class="block-card section-card expanded" data-block="${addBlockId}">
       <div class="block-content"><div class="block-tasks">`;
 
-  tasks.forEach(task => { html += renderTask(task, day.id); });   // original order; completed tasks stay in place
+  // original order; completed tasks stay in place. Numbered "<sidebar #>.<position>" (e.g. 2.3), display only.
+  const secNum = findDayIndex(day.id) + 1;
+  tasks.forEach((task, ti) => { html += renderTask(task, day.id, `${secNum}.${ti + 1}`); });
 
   html += `<div class="add-task-row">
         <button class="add-item-btn" onclick="showAddTaskForm('${addBlockId}')" id="add-task-trigger-${addBlockId}">
@@ -1816,7 +1818,7 @@ function linkIcon(url) {
 }
 
 // ===== RENDER: SINGLE TASK =====
-function renderTask(task, dayId) {
+function renderTask(task, dayId, num = '') {
   const checked = state.checked[task.id] ? 'checked' : '';
   const doneClass = state.checked[task.id] ? 'done' : '';
   const builtInRes = task.resources || [];
@@ -1900,7 +1902,9 @@ function renderTask(task, dayId) {
 
   // Content uses the full row width; all actions (incl. marking done) live in a labelled toolbar underneath.
   const kind = taskKind(task.text);
-  const tags = (kind.label ? `<span class="task-kind kind-${kind.kind}">${escapeHtml(kind.label)}</span>` : '')
+  const numStyle = 'display:inline-flex;align-items:center;height:20px;font-family:var(--font-mono);font-size:0.72rem;font-weight:600;color:var(--text-muted);font-variant-numeric:tabular-nums';
+  const tags = (num ? `<span class="task-seq" style="${numStyle}" title="Task ${num}">${num}</span>` : '')
+    + (kind.label ? `<span class="task-kind kind-${kind.kind}">${escapeHtml(kind.label)}</span>` : '')
     + (task.bonus ? '<span class="task-bonus-tag" title="Bonus — optional, does not block section completion">★ bonus</span>' : '');
   return `<div class="task-item ${doneClass} ${isComposing ? 'commenting' : ''} ${kind.kind ? 'kind-' + kind.kind : ''}" data-task="${task.id}" id="task-${task.id}">
     <div class="task-info">
