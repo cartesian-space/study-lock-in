@@ -3322,13 +3322,14 @@ function renderLogActivity() {
       <input id="logCategory" class="add-item-input" type="text" list="logCategoryList" value="${escapeHtml(lastCat)}" placeholder="Category" title="Category (shown in the heatmap tooltip)">
       <datalist id="logCategoryList">${_activityCategories().map(c => `<option value="${escapeHtml(c)}">`).join('')}</datalist>
       <input id="logDate" class="add-item-input" type="date" value="${_todayStr()}" max="${_todayStr()}" title="Date studied">
+      <input id="logTime" class="add-item-input" type="time" title="Time studied (optional) — leave blank for now, or noon on a past day">
       <div class="add-item-actions">
         <button type="submit" class="resource-form-btn save">Add</button>
         <button type="button" class="resource-form-btn cancel" onclick="toggleLogActivity()">Close</button>
       </div>
     </form>
     ${recent.length ? `<div class="log-activity-recent"><span class="log-activity-recent-label">Logged on this device — not exported yet</span>
-      ${recent.map(e => `<div class="log-activity-item"><span class="log-activity-date">${escapeHtml(formatHeatmapDate(_localDateOf(e.t)))}</span>
+      ${recent.map(e => `<div class="log-activity-item"><span class="log-activity-date">${escapeHtml(formatHeatmapDate(_localDateOf(e.t)))} · ${escapeHtml(_localTimeOf(e.t))}</span>
         <span class="log-activity-topic">${escapeHtml(e.topic)}</span><span class="log-activity-cat">${escapeHtml(e.syllabus)}</span>
         <button class="log-activity-rm" onclick="removeLogActivity('${_jsq(_activityKey(e))}')" title="Remove">×</button></div>`).join('')}
       <span class="log-activity-hint">Export Activity (Data panel) → replace <code>_data/activity.yml</code> → commit to sync.</span></div>` : ''}`;
@@ -3338,14 +3339,22 @@ function _localDateOf(iso) {
   const d = new Date(iso);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+function _localTimeOf(iso) {
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
 
 function submitLogActivity() {
   const topic = document.getElementById('logTopic').value.trim();
   if (!topic) { showToast('⚠️ What did you study?'); return; }
   const category = document.getElementById('logCategory').value.trim() || ADHOC_DEFAULT_CATEGORY;
   const date = document.getElementById('logDate').value || _todayStr();
-  // Today → now; a past date → noon local time on that day (keeps it on the right heatmap cell in any timezone)
-  const t = date === _todayStr() ? new Date() : new Date(`${date}T12:00:00`);
+  const time = document.getElementById('logTime')?.value || '';   // "HH:MM" local, optional
+  // A chosen time is used as-is (local, so it lands on the right heatmap day and Study-hours hour).
+  // No time: today → now; a past date → noon local time on that day (keeps it on the right heatmap cell in any timezone)
+  const t = time ? new Date(`${date}T${time}`)
+    : date === _todayStr() ? new Date() : new Date(`${date}T12:00:00`);
+  if (isNaN(t)) { showToast('⚠️ Invalid date or time'); return; }
+  if (t > new Date()) { showToast('⚠️ That time is in the future'); return; }
   const entry = { t: t.toISOString(), syllabus: category, topic, action: 'done', manual: true };
   localStorage.setItem('study-lock-in:last-activity-category', category);
   postEvent({ op: 'activity_add', entry });

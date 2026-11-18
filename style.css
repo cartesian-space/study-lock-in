@@ -3417,7 +3417,7 @@ textarea,
 .log-activity-btn:hover,
 .log-activity-btn.active { border-color: var(--accent); color: var(--accent); }
 .log-activity { margin: 0 0 12px; }
-.log-activity-form { display: grid; grid-template-columns: 1fr 200px 150px auto; gap: 8px; align-items: center; }
+.log-activity-form { display: grid; grid-template-columns: 1fr 200px 150px 120px auto; gap: 8px; align-items: center; }
 .log-activity-form .add-item-actions { margin: 0; }
 .log-activity-recent { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
 .log-activity-recent-label,
@@ -3434,7 +3434,8 @@ textarea,
 .log-activity-rm:hover { color: var(--red); }
 @media (max-width: 768px) {
   .log-activity-form { grid-template-columns: 1fr 1fr; }
-  .log-activity-form #logTopic { grid-column: 1 / -1; }
+  .log-activity-form #logTopic,
+  .log-activity-form #logCategory { grid-column: 1 / -1; }   /* phones: topic / category / date + time / actions */
   .log-activity-form .add-item-actions { grid-column: 1 / -1; }
   .log-activity-cat { display: none; }
 }
