@@ -1,5 +1,5 @@
 # Study Lock-In — activity log (powers the contribution heatmap)
-# Exported: 2026-11-19T15:09:05.029Z
+# Exported: 2026-11-19T18:33:27.061Z
 - t: "2026-01-05T11:21:00Z"
   syllabus: "Work & Infra"
   topic: "HAProxy health check tuning — reducing false positive backend downs"
@@ -1015,4 +1015,16 @@
 - t: "2026-11-19T15:08:04.800Z"
   syllabus: "Math for ML/DL/Neural Networks"
   topic: "Reflect (journal): Why is an orthonormal basis so convenient? (Hint: what replaces solving a linear system?)"
+  action: "done"
+- t: "2026-11-19T17:03:05.892Z"
+  syllabus: "Math for ML/DL/Neural Networks"
+  topic: "Read: NumPy — Broadcasting (official guide). Read the rules and the 'general broadcasting rules' examples."
+  action: "done"
+- t: "2026-11-19T18:31:29.400Z"
+  syllabus: "Math for ML/DL/Neural Networks"
+  topic: "Read: D2L §2.3 — matrices, transpose, matrix–vector and matrix–matrix products."
+  action: "done"
+- t: "2026-11-19T18:32:15.113Z"
+  syllabus: "Math for ML/DL/Neural Networks"
+  topic: "Worksheet — transpose rules. By hand, on paper: (1) Transpose [[1,2,3],[4,5,6]]. (2) A=[[1, 2], [3, 4]], B=[[5, 6], [7, 8]]: verify (AB)ᵀ = BᵀAᵀ. (3) If x is (3,1), what are the shapes of xᵀx and xxᵀ? What are they called? ✔ Check: (1) [[1,4],[2,5],[3,6]]; (2) both equal [[19, 43], [22, 50]]; (3) (1,1) inner product (a number); (3,3) outer product (a matrix)"
   action: "done"

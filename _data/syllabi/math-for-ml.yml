@@ -9,8 +9,8 @@ meta:
 
 state:
   theme: "dark"
-  active_section: "dot-product"
-  journal_section: "dot-product"
+  active_section: "transpose-shapes"
+  journal_section: "transpose-shapes"
   start_date: "2026-11-05T09:10:10.387Z"
 
 sections:
@@ -170,17 +170,20 @@ sections:
     subtitle: "Phase A · Linear Algebra — transposes, batch dimensions, broadcasting, and how to measure size and distance"
     tasks:
       - text: "Read: NumPy — Broadcasting (official guide). Read the rules and the 'general broadcasting rules' examples."
-        done: false
+        done: true
+        done_at: "2026-11-19T17:03:05.879Z"
         resources:
           - label: "NumPy: Broadcasting"
             url: "https://numpy.org/doc/stable/user/basics.broadcasting.html"
       - text: "Read: D2L §2.3 — matrices, transpose, matrix–vector and matrix–matrix products."
-        done: false
+        done: true
+        done_at: "2026-11-19T18:31:29.388Z"
         resources:
           - label: "D2L: Linear Algebra"
             url: "https://d2l.ai/chapter_preliminaries/linear-algebra.html"
       - text: "Worksheet — transpose rules. By hand, on paper: (1) Transpose [[1,2,3],[4,5,6]]. (2) A=[[1, 2], [3, 4]], B=[[5, 6], [7, 8]]: verify (AB)ᵀ = BᵀAᵀ. (3) If x is (3,1), what are the shapes of xᵀx and xxᵀ? What are they called? ✔ Check: (1) [[1,4],[2,5],[3,6]]; (2) both equal [[19, 43], [22, 50]]; (3) (1,1) inner product (a number); (3,3) outer product (a matrix)"
-        done: false
+        done: true
+        done_at: "2026-11-19T18:32:15.113Z"
       - text: "Worksheet — a batch through a layer. By hand, on paper: (1) Batch X (4 examples × 3 features) = [[1, 0, 2], [0, 1, 1], [1, 1, 0], [2, 0, 1]], W = [[1, -1], [0, 2], [1, 0]], b = [0.5, -1]. Shape of X·W? (2) Compute X·W + b (b is broadcast to every row). (3) Why do frameworks write X·W (batch-first) instead of W·x? ✔ Check: (1) (4,2); (2) [[3.5, -2], [1.5, 1], [1.5, 0], [3.5, -3]]; (3) rows = examples: one matrix multiply processes the whole batch at once"
         done: false
       - text: "Code (NumPy, 10 min): Reproduce X@W+b; then deliberately try X@W.T and read the error message — learn to read shape errors."
