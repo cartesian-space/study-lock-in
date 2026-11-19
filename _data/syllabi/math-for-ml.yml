@@ -136,23 +136,35 @@ sections:
         practice: true
         practice_at: "2026-11-17T16:52:04.409Z"
       - text: "Code (NumPy, 10 min): np.dot, np.linalg.norm — recompute everything, then build a 5×3 'embedding table' and find the most similar pair with a cosine-similarity matrix E_n @ E_n.T."
-        done: false
+        done: true
+        done_at: "2026-11-18T15:04:36.944Z"
+        comments:
+          - "import numpy as np\n\n# 1. Build a 5x3 Embedding Table (5 concepts, 3 dimensions)\n# Vocabulary: 0: \"king\", 1: \"queen\", 2: \"man\", 3: \"woman\", 4: \"apple\"\n# Dimensions: [Royalty, Femininity, Food]\nwords = [\"king\", \"queen\", \"man\", \"woman\", \"apple\"]\nE = np.array([\n    [0.9,  0.1,  0.2],   # king \n    [0.8,  0.9,  0.1],   # queen \n    [0.1,  0.1, -0.1],   # man (low royalty, low femininity)\n    [0.2,  0.8,  0.0],   # woman\n    [-0.5, 0.0,  0.9]    # apple\n])\n\n# 2. Compute the L2 Norm (length) of every row vector\n# np.linalg.norm calculates sqrt(x^2 + y^2 + z^2) for each row\nnorms = np.linalg.norm(E, axis=1, keepdims=True)\n\n# 3. Normalize the matrix to the Unit Sphere\n# Broadcasting divides every raw coordinate by its vector's total length\nE_n = E / norms \n\n# 4. The Magic: Compute the Cosine Similarity Matrix in one shot\n# (5,3) @ (3,5) -> (5,5) matrix of every word compared to every word\nsim_matrix = E_n @ E_n.T\n\n# 5. Find the most similar pair\n# We must fill the diagonal with -infinity, because a word is always 100% similar to itself.\nnp.fill_diagonal(sim_matrix, -np.inf)\n\n# np.argmax flattens the matrix to find the highest score, unravel_index gets the 2D coordinates\nbest_idx = np.unravel_index(np.argmax(sim_matrix), sim_matrix.shape)\n\nprint(f\"Most similar pair: '{words[best_idx[0]]}' and '{words[best_idx[1]]}'\")\nprint(f\"Cosine Similarity Score: {sim_matrix[best_idx]:.2f}\")"
       - text: "Watch: MIT 18.06 (Strang) Lecture 15 — Projections onto subspaces (~48 min). Watch the first 25 min for vectors onto lines."
-        done: false
+        done: true
+        done_at: "2026-11-18T15:04:40.877Z"
         resources:
           - label: "MIT 18.06 L15 — Projections"
             url: "https://www.youtube.com/watch?v=Y_Ac6KiQ1t0"
       - text: "Watch: MIT 18.06 Lecture 14 — Orthogonal vectors and subspaces (~50 min)."
-        done: false
+        done: true
+        done_at: "2026-11-19T14:01:48.410Z"
         resources:
           - label: "MIT 18.06 L14 — Orthogonality"
             url: "https://www.youtube.com/watch?v=YzZUIYRCE38"
       - text: "Worksheet — project. By hand, on paper: (1) Project b=[3, 4] onto a=[2, 1]: p = (a·b / a·a)·a. (2) Residual r = b − p. Verify r·a = 0. (3) Length of p — and how it relates to ‖b‖cos θ. ✔ Check: (1) [4, 2]; (2) r=[-1, 2], r·a = 0; (3) ‖p‖ = 4.472 = a·b/‖a‖ = ‖b‖cos θ"
-        done: false
+        done: true
+        done_at: "2026-11-18T16:24:18.138Z"
+        practice: true
+        practice_at: "2026-11-18T16:24:20.446Z"
       - text: "Worksheet — orthonormal bases. By hand, on paper: (1) u1=[1,1]/√2, u2=[−1,1]/√2. Check u1·u2 and ‖u1‖. (2) Coordinates of [3, 1] in basis (u1,u2) — just two dot products. (3) Gram–Schmidt on g1=[3, 1], g2=[2, 2]: e1 = g1/‖g1‖, then remove g2's component along e1. ✔ Check: (1) 0 and 1 — orthonormal; (2) (2.828, -1.414); (3) e1=[0.949, 0.316], g2⊥=[-0.4, 1.2] (normalise it to get e2)"
-        done: false
+        done: true
+        done_at: "2026-11-19T15:08:00.146Z"
+        practice: true
+        practice_at: "2026-11-19T15:08:06.891Z"
       - text: "Reflect (journal): Why is an orthonormal basis so convenient? (Hint: what replaces solving a linear system?)"
-        done: false
+        done: true
+        done_at: "2026-11-19T15:08:04.800Z"
   - id: "transpose-shapes"
     title: "Shapes, Batches & Norms"
     subtitle: "Phase A · Linear Algebra — transposes, batch dimensions, broadcasting, and how to measure size and distance"
