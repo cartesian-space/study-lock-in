@@ -4273,3 +4273,5 @@ body[data-view="practice"] #hourHeatmap { display: none !important; }
   .hour-heatmap { --hh-row: 13px; }
   .hh-day { font-size: 0.56rem !important; }
 }
+/* hover grid must have one row per day (was hard-coded to 7) */
+.hh-hits { grid-template-rows: repeat(var(--hh-rows, 30), 1fr) !important; }

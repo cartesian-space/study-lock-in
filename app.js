@@ -3420,6 +3420,7 @@ function renderHourHeatmap(activityLog) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const days = [];                                              // oldest first → today last
   const HH_DAYS = 30;
+  host.style.setProperty('--hh-rows', HH_DAYS);   // drawing, labels and hover grid all use this
   for (let i = HH_DAYS - 1; i >= 0; i--) { const d = new Date(today); d.setDate(d.getDate() - i); days.push(d); }
   const grid = {}; days.forEach(d => { grid[dayKey(d)] = Array.from({ length: 24 }, () => ({ n: 0, topics: [] })); });
 
