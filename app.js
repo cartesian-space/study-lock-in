@@ -1269,7 +1269,11 @@ function makeEditable(el, currentValue, onSave, opts = {}) {
   });
 }
 
-function editMeta(field, el) {
+/** Phones: tapping titles/headers must not turn them into edit boxes (explicit edit actions still work). */
+function _noTapEdit() { return window.matchMedia('(max-width: 768px)').matches; }
+
+function editMeta(field, el, explicit = false) {
+  if (!explicit && _noTapEdit()) return;
   const val = (state.meta && state.meta[field]) || '';
   makeEditable(el, val, newVal => {
     state.meta[field] = newVal;
@@ -1280,6 +1284,7 @@ function editMeta(field, el) {
 }
 
 function editDayField(dayId, field, el) {
+  if (_noTapEdit()) return;
   const day = findDay(dayId);
   if (!day) return;
   makeEditable(el, day[field] || '', newVal => {
@@ -1293,6 +1298,7 @@ function editDayField(dayId, field, el) {
 }
 
 function editBlockTitle(blockId, el) {
+  if (_noTapEdit()) return;
   for (const day of state.days) {
     for (const block of day.blocks) {
       if (block.id === blockId) {
@@ -1518,7 +1524,7 @@ function renderApp() {
         <section class="journal-section" id="journalSection"></section>
       </div>
     </div>
-    <footer class="footer"><p>${escapeHtml(meta.title || 'Study Tracker')} · Data saved locally · <button class="footer-edit" onclick="editMeta('title', this.closest('.footer').querySelector('p'))" title="Rename this syllabus">Rename</button></p></footer>
+    <footer class="footer"><p>${escapeHtml(meta.title || 'Study Tracker')} · Data saved locally · <button class="footer-edit" onclick="editMeta('title', this.closest('.footer').querySelector('p'), true)" title="Rename this syllabus">Rename</button></p></footer>
 
   `;
 
