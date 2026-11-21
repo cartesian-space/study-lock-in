@@ -1,5 +1,5 @@
 # Study Lock-In — activity log (powers the contribution heatmap)
-# Exported: 2026-11-21T18:49:29.409Z
+# Exported: 2026-11-21T18:58:50.429Z
 - t: "2026-01-05T11:21:00Z"
   syllabus: "Work & Infra"
   topic: "HAProxy health check tuning — reducing false positive backend downs"
@@ -1047,4 +1047,8 @@
 - t: "2026-11-21T18:49:16.860Z"
   syllabus: "Math for ML/DL/Neural Networks"
   topic: "Worksheet — norms. By hand, on paper: (1) v=[3, -4, 12]: L2, L1 and L∞ norms. (2) Distance between [1,2] and [4,6] (L2 and L1). (3) Frobenius norm of [[1, 2], [3, 4]]. (4) Sketch the unit 'circle' {x: ‖x‖=1} for L1, L2 and L∞ in 2D. ✔ Check: (1) L2=13, L1=19, L∞=12; (2) L2=5, L1=7; (3) √30 ≈ 5.477; (4) diamond, circle, square"
+  action: "done"
+- t: "2026-11-21T18:58:37.419Z"
+  syllabus: "Math for ML/DL/Neural Networks"
+  topic: "Worksheet — ML uses. By hand, on paper: (1) MSE between predictions [3,1] and targets [2.5,1.5] — as a squared L2 norm / n. (2) Gradient clipping: g=[6,8], max norm 5. Clipped g? (3) Why does an L2 penalty push weights toward zero 'smoothly' while L1 can make them exactly zero? (Use the sketches.) ✔ Check: (1) (0.25 + 0.25)/2 = 0.25; (2) g·5/10 = [3,4]; (3) the L1 'diamond' has corners on the axes, so optima tend to land where coordinates are 0"
   action: "done"

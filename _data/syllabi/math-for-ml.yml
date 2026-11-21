@@ -206,7 +206,8 @@ sections:
         done: true
         done_at: "2026-11-21T18:49:16.860Z"
       - text: "Worksheet — ML uses. By hand, on paper: (1) MSE between predictions [3,1] and targets [2.5,1.5] — as a squared L2 norm / n. (2) Gradient clipping: g=[6,8], max norm 5. Clipped g? (3) Why does an L2 penalty push weights toward zero 'smoothly' while L1 can make them exactly zero? (Use the sketches.) ✔ Check: (1) (0.25 + 0.25)/2 = 0.25; (2) g·5/10 = [3,4]; (3) the L1 'diamond' has corners on the axes, so optima tend to land where coordinates are 0"
-        done: false
+        done: true
+        done_at: "2026-11-21T18:58:37.408Z"
   - id: "determinant"
     title: "Determinant, Inverse & Rank"
     subtitle: "Phase A · Linear Algebra — how much space is scaled or crushed, undoing a transformation, and how many dimensions survive"
