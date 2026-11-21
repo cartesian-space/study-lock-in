@@ -1549,6 +1549,31 @@ function renderApp() {
   }
 }
 
+// ── Phone section dropdown (same look and behaviour as the ⋯ menu) ──
+function toggleSectionMenu(e) {
+  if (e) e.stopPropagation();
+  const pop = document.querySelector('.section-menu-pop'), btn = document.querySelector('.section-menu-btn');
+  if (!pop) return;
+  const open = pop.hidden;
+  closeAppMenu();
+  if (!open) return closeSectionMenu();
+  pop.innerHTML = state.days.map((d, i) => {
+    const p = sectionProgress(d, state.checked), on = d.id === state.activeDay;
+    const badge = p.complete ? '<i class="sm-badge done" aria-label="done"></i>'
+      : p.done > 0 ? `<i class="sm-badge pie" style="--pct:${(p.pct * 100).toFixed(1)}%" aria-label="${Math.round(p.pct * 100)}%"></i>` : '';
+    return `<button class="app-menu-item section-item${on ? ' on' : ''}${p.complete ? ' completed' : ''}" role="menuitemradio" aria-checked="${on}"
+        onclick="closeSectionMenu(); switchDay('${_jsq(d.id)}'); renderDayNav(); updateStats(); window.scrollTo({top: 0})">
+      <span class="sm-num">${i + 1}</span><span class="syllabus-name">${escapeHtml(d.label || d.title)}</span>${badge}</button>`;
+  }).join('') + `<div class="app-menu-sep"></div><button class="app-menu-item" onclick="closeSectionMenu(); showAddDayForm()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Add section</span></button>`;
+  pop.hidden = false;
+  btn?.setAttribute('aria-expanded', 'true');
+  pop.querySelector('.section-item.on')?.scrollIntoView({ block: 'nearest' });
+}
+function closeSectionMenu() {
+  const pop = document.querySelector('.section-menu-pop');
+  if (pop && !pop.hidden) { pop.hidden = true; document.querySelector('.section-menu-btn')?.setAttribute('aria-expanded', 'false'); }
+}
+
 // ===== VIEWS: Study (do the current section) / Overview (stats, heatmap, map) =====
 const VIEW_KEY = 'study-lock-in:view';
 function getView() {
@@ -1629,6 +1654,7 @@ function _closeEmptyInlineForms(e) {
 }
 document.addEventListener('click', e => {
   if (!e.target.closest('#appMenu')) closeAppMenu();
+  if (!e.target.closest('.section-menu')) closeSectionMenu();
   if (!e.target.closest('.task-menu')) closeTaskMenus();
   if (!e.target.closest('#dataPanel, #dataToggle')) closeDataPanel();
   // the task ⋯ "Add link" item opens the form itself — don't close it on that same click
@@ -1636,13 +1662,22 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  closeAppMenu(); closeTaskMenus(); closeDataPanel(); _closeEmptyInlineForms(null);
+  closeAppMenu(); closeSectionMenu(); closeTaskMenus(); closeDataPanel(); _closeEmptyInlineForms(null);
 });
 
 // ===== RENDER: DAY NAVIGATION =====
 function renderDayNav() {
   const nav = document.getElementById('dayNav');
-  let html = '';
+  // Phones: the section list is a dropdown, styled exactly like the ⋯ menu (pills hidden there by CSS)
+  const ai = Math.max(0, state.days.findIndex(d => d.id === state.activeDay));
+  const cur = state.days[ai];
+  let html = cur ? `<div class="section-menu">
+      <button class="section-menu-btn" onclick="toggleSectionMenu(event)" aria-haspopup="true" aria-expanded="false" title="Choose section">
+        <span class="section-menu-num">${ai + 1}</span><span class="section-menu-title">${escapeHtml(cur.label || cur.title)}</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="app-menu-pop section-menu-pop" role="menu" hidden></div>
+    </div>` : '';
   state.days.forEach((day, i) => {
     const isActive = day.id === state.activeDay;
     const isComplete = isDayComplete(day.id);

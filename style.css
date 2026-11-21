@@ -4324,3 +4324,30 @@ body[data-view="practice"] #hourHeatmap { display: none !important; }
 .lock-minimal-submit { background: var(--accent) !important; color: var(--accent-text) !important; }
 .lock-minimal-hint { font-family: var(--font-body) !important; color: var(--text-muted) !important; font-size: 0.75rem !important; margin-top: 10px; text-align: center; }
 .lock-minimal-hint kbd { font-family: var(--font-mono); font-size: 0.7rem; padding: 1px 6px; border: 1px solid var(--border-color); border-bottom-width: 2px; border-radius: 5px; background: var(--bg-card); }
+
+/* Phone: sections as a dropdown in the ⋯-menu style (pills/sidebar elsewhere) */
+.section-menu { display: none; }
+@media (max-width: 768px) {
+  .study-layout .day-nav { overflow: visible !important; display: block !important; }
+  .study-layout .day-nav .day-pill { display: none !important; }
+  .section-menu { display: block; position: relative; }
+  .section-menu-btn {
+    width: 100%; height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 12px;
+    border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-card); color: var(--text-primary);
+    font: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer; text-align: left;
+  }
+  .section-menu-btn[aria-expanded="true"], .section-menu-btn:hover { border-color: var(--accent-soft); }
+  .section-menu-btn svg { margin-left: auto; color: var(--text-muted); flex: 0 0 auto; transition: transform var(--transition); }
+  .section-menu-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+  .section-menu-num { font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent); min-width: 18px; }
+  .section-menu-title { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .section-menu-pop { left: 0; right: 0; min-width: 0; max-width: none; max-height: 65vh; overflow-y: auto; }
+  .section-item { gap: 10px; }
+  .section-item .sm-num { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); min-width: 18px; }
+  .section-item.on { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+  .section-item.on .sm-num { color: var(--accent); }
+  .section-item.completed:not(.on) .syllabus-name { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--text-dim); }
+  .sm-badge { flex: 0 0 auto; width: 16px; height: 16px; border-radius: 50%; margin-left: auto; }
+  .sm-badge.pie { background: conic-gradient(var(--accent) 0 var(--pct, 0%), var(--accent-soft) var(--pct, 0%) 100%); box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .sm-badge.done { background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center / 10px no-repeat; }
+}

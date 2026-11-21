@@ -185,16 +185,20 @@ sections:
         done: true
         done_at: "2026-11-19T18:32:15.113Z"
       - text: "Worksheet — a batch through a layer. By hand, on paper: (1) Batch X (4 examples × 3 features) = [[1, 0, 2], [0, 1, 1], [1, 1, 0], [2, 0, 1]], W = [[1, -1], [0, 2], [1, 0]], b = [0.5, -1]. Shape of X·W? (2) Compute X·W + b (b is broadcast to every row). (3) Why do frameworks write X·W (batch-first) instead of W·x? ✔ Check: (1) (4,2); (2) [[3.5, -2], [1.5, 1], [1.5, 0], [3.5, -3]]; (3) rows = examples: one matrix multiply processes the whole batch at once"
-        done: false
+        done: true
+        done_at: "2026-11-20T04:30:30.827Z"
       - text: "Code (NumPy, 10 min): Reproduce X@W+b; then deliberately try X@W.T and read the error message — learn to read shape errors."
-        done: false
+        done: true
+        done_at: "2026-11-21T18:22:24.713Z"
       - text: "Read: D2L §2.3.11 — Norms (L1, L2, Frobenius)."
-        done: false
+        done: true
+        done_at: "2026-11-21T18:22:57.036Z"
         resources:
           - label: "D2L: Linear Algebra (Norms)"
             url: "https://d2l.ai/chapter_preliminaries/linear-algebra.html"
       - text: "Read: D2L appendix — Geometry and linear algebraic operations (angles, hyperplanes, distances)."
-        done: false
+        done: true
+        done_at: "2026-11-21T18:42:43.267Z"
         resources:
           - label: "D2L: Geometry & LA ops"
             url: "https://d2l.ai/chapter_appendix-mathematics-for-deep-learning/geometry-linear-algebraic-ops.html"
