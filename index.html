@@ -26,14 +26,11 @@ title: "Study Lock-In"
 
   <div class="lock-card lock-minimal-card">
     <div class="lock-minimal-header">
-      <pre class="lock-ascii-glyph" aria-hidden="true">
-  .---.
- /_____\
- | .-. |
- | '-' |
- '-----'</pre>
-      <h1 class="lock-minimal-title">Study // Lock-In</h1>
-      <div class="lock-minimal-sub">Workspace Locked</div>
+      <div class="lock-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <h1 class="lock-minimal-title">Study Lock-In</h1>
+      <div class="lock-minimal-sub">Locked</div>
     </div>
 
     <div id="googleSignin" class="lock-google" hidden>
@@ -49,12 +46,12 @@ title: "Study Lock-In"
           type="password" 
           id="passcodeInput" 
           class="lock-minimal-input" 
-          placeholder="enter passcode..." 
+          placeholder="Passcode" 
           autocomplete="current-password" 
           autofocus 
           spellcheck="false"
         />
-        <button type="button" class="lock-toggle-pwd lock-minimal-eye" onclick="togglePasscodeVisibility()" title="Show/Hide passcode">👁</button>
+        <button type="button" class="lock-toggle-pwd lock-minimal-eye" onclick="togglePasscodeVisibility()" title="Show or hide passcode" aria-label="Show or hide passcode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
         <button type="submit" class="lock-minimal-submit" title="Unlock workspace (Enter)">↵</button>
       </div>
       <p id="lockError" class="lock-error-text"></p>

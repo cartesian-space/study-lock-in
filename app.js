@@ -483,6 +483,7 @@ function initLockAscii() {
 }
 
 function startLockAscii() {
+  return;   // decorative animated backdrop retired (calm lock screen); kept for reference
   if (_lockAscii.running) return;
   if (!_lockAscii.initialized) {
     initLockAscii();
@@ -1373,7 +1374,7 @@ function renderApp() {
         </div>
         <div class="header-right">
           <div class="header-stat"><span class="stat-label">Overall</span><span class="stat-value" id="overallPercent">0%</span></div>
-          <div class="header-stat header-stat-streak"><span class="stat-label">Streak</span><span class="stat-value" id="streakCount">0 🔥</span></div>
+          <div class="header-stat header-stat-streak"><span class="stat-label">Streak</span><span class="stat-value" id="streakCount">0</span></div>
           <div class="app-menu" id="appMenu">
             <button class="app-menu-btn" id="appMenuBtn" onclick="toggleAppMenu(event)" title="Menu" aria-haspopup="true" aria-expanded="false">
               <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
@@ -1416,15 +1417,15 @@ function renderApp() {
             </h3>
             <div class="data-buttons">
               <button class="data-btn" onclick="exportSyllabus()" title="Download YAML file to drop into _data/syllabi/ and commit">
-                <span class="data-btn-icon">💾</span>
+                <span class="data-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span>
                 <span class="data-btn-text">Export for Git<small>.yml</small></span>
               </button>
               <button class="data-btn" onclick="exportState()" title="Download JSON state backup">
-                <span class="data-btn-icon">📦</span>
+                <span class="data-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 8v13H3V8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg></span>
                 <span class="data-btn-text">Backup State<small>.json</small></span>
               </button>
               <button class="data-btn" onclick="exportActivity()" title="Download the merged activity log to replace _data/activity.yml and commit">
-                <span class="data-btn-icon">🔥</span>
+                <span class="data-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg></span>
                 <span class="data-btn-text">Export Activity<small>activity.yml</small></span>
               </button>
             </div>
@@ -1437,15 +1438,15 @@ function renderApp() {
             </h3>
             <div class="data-buttons">
               <button class="data-btn import-btn" onclick="importSyllabusFile()" title="Load a .yml or .json file — replaces active syllabus data">
-                <span class="data-btn-icon">📂</span>
+                <span class="data-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
                 <span class="data-btn-text">Import File<small>.yml / .json</small></span>
               </button>
               <button class="data-btn" onclick="resetToRepoBaseline()" title="Discard unexported local progress and reload pristine YAML from Git">
-                <span class="data-btn-icon">🔄</span>
+                <span class="data-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></span>
                 <span class="data-btn-text">Reset to Git<small>Baseline</small></span>
               </button>
             </div>
-            <p class="data-hint">💡 Workflow: Export .yml → drop in <code>_data/syllabi/</code> → commit & push to GitHub Pages.</p>
+            <p class="data-hint">Workflow: export .yml → drop it in <code>_data/syllabi/</code> → commit and push to GitHub Pages</p>
           </div>
           <div class="data-divider"></div>
           <div class="data-section">
@@ -1455,11 +1456,11 @@ function renderApp() {
             </h3>
             <div class="data-buttons">
               <button class="data-btn" onclick="changePasscode()" title="Change passcode">
-                <span class="data-btn-icon">🔑</span>
+                <span class="data-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg></span>
                 <span class="data-btn-text">Change Passcode</span>
               </button>
               <button class="data-btn" onclick="lockApp()" title="Lock workspace immediately">
-                <span class="data-btn-icon">🔒</span>
+                <span class="data-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
                 <span class="data-btn-text">Lock Workspace</span>
               </button>
             </div>
@@ -1471,12 +1472,12 @@ function renderApp() {
 
     <div class="overview-head view-overview-only">
       <h2>Overview</h2>
-      <p>Progress, activity and how your syllabi connect.</p>
+      <p>Your progress and when you study</p>
     </div>
     <div class="stats-grid" id="statsGrid">
-      <div class="stat-card"><div class="stat-card-icon tasks-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div><div class="stat-card-info"><span class="stat-card-value" id="completedTasks">0 / 0</span><span class="stat-card-label">Tasks Completed</span></div></div>
-      <div class="stat-card"><div class="stat-card-icon bonus-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div class="stat-card-info"><span class="stat-card-value" id="bonusDone">0 / 0</span><span class="stat-card-label">Bonus Tasks Done</span></div></div>
-      <div class="stat-card"><div class="stat-card-icon days-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="stat-card-info"><span class="stat-card-value" id="daysComplete">0 / 0</span><span class="stat-card-label">Sections Done</span></div></div>
+      <div class="stat-card"><div class="stat-card-icon tasks-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div><div class="stat-card-info"><span class="stat-card-value" id="completedTasks">0 / 0</span><span class="stat-card-label">Tasks completed</span></div></div>
+      <div class="stat-card"><div class="stat-card-icon bonus-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div class="stat-card-info"><span class="stat-card-value" id="bonusDone">0 / 0</span><span class="stat-card-label">Bonus tasks done</span></div></div>
+      <div class="stat-card"><div class="stat-card-icon days-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="stat-card-info"><span class="stat-card-value" id="daysComplete">0 / 0</span><span class="stat-card-label">Sections done</span></div></div>
     </div>
 
     <div class="activity-heatmap" id="activityHeatmap">
@@ -1497,7 +1498,7 @@ function renderApp() {
           <span class="heatmap-legend-cell" data-level="6"></span>
           <span class="heatmap-legend-cell" data-level="7"></span>
           <span class="heatmap-legend-cell" data-level="8"></span>
-          <span class="heatmap-legend-label">🔥</span>
+          <span class="heatmap-legend-label">More</span>
         </div>
       </div>
       <div class="log-activity" id="logActivity" hidden></div>
@@ -1517,7 +1518,7 @@ function renderApp() {
         <section class="journal-section" id="journalSection"></section>
       </div>
     </div>
-    <footer class="footer"><p>${escapeHtml(meta.title || 'Study Tracker')} · Data saved locally · <span class="editable footer-edit" onclick="editMeta('title', this.closest('.footer').querySelector('p'))" title="Click to edit">✏️</span></p></footer>
+    <footer class="footer"><p>${escapeHtml(meta.title || 'Study Tracker')} · Data saved locally · <button class="footer-edit" onclick="editMeta('title', this.closest('.footer').querySelector('p'))" title="Rename this syllabus">Rename</button></p></footer>
 
   `;
 
@@ -1736,7 +1737,7 @@ function renderActivePanel() {
       <p class="day-subtitle editable" onclick="editDayField('${day.id}', 'subtitle', this)" title="Click to edit subtitle">${escapeHtml(day.subtitle || 'Click to add subtitle…')}</p>
       <div class="day-meta">
         <span class="day-progress-text">${prog.done}/${prog.total} tasks${prog.complete ? ' · ✓ section done' : ''}</span>
-        ${state.days.length > 1 ? `<button class="meta-action-btn danger" onclick="removeDay('${day.id}')" title="Delete section">🗑️</button>` : ''}
+        ${state.days.length > 1 ? `<button class="meta-action-btn danger" onclick="removeDay('${day.id}')" title="Delete section" aria-label="Delete section">${TASK_ICONS.trash}</button>` : ''}
       </div>
       ${reqHtml}
     </div>
@@ -1930,7 +1931,7 @@ function renderPractice() {
         Flag any task with <b>Practice</b> in the Study view to bring it here.</p>
     </div>`;
   if (!items.length) {
-    html += `<div class="practice-empty">🎯<br>No practice items yet.<br><span>In Study, use the target button on a task — worksheets you want to redo, ideas to revisit.</span></div>`;
+    html += `<div class="practice-empty">No practice items yet<br><span>In Study, mark a task done, then use Practice again — worksheets you want to redo, ideas to revisit.</span></div>`;
   }
   for (const key of order) {
     const list = groups[key];
@@ -2210,7 +2211,7 @@ function updateStats() {
   el('bonusDone').textContent = `${completedBonus} / ${totalBonus}`;
   el('daysComplete').textContent = `${daysComplete} / ${state.days.length}`;
 
-  el('streakCount').textContent = calculateStreak() + ' 🔥';
+  el('streakCount').textContent = String(calculateStreak());
   if (typeof renderOverview === 'function') renderOverview();
 }
 
@@ -2780,6 +2781,8 @@ function fireDayComplete() {
 
 // ===== TOAST =====
 function showToast(message) {
+  // Plain statements only: no leading emoji, no exclamation marks
+  message = String(message).replace(/^[\p{Extended_Pictographic}\uFE0F\u200D]+\s*/u, '').replace(/!+/g, '').trim();
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
   const toast = document.createElement('div');
@@ -2791,7 +2794,7 @@ function showToast(message) {
 
 // ===== RESET =====
 function resetAll() {
-  if (!confirm('🗑️ Reset ALL progress for this syllabus? Checkboxes, time, journal, and comments will be cleared. Structure (sections/tasks) is kept.')) return;
+  if (!confirm('Reset all progress for this syllabus? Checkboxes, time, journal, and comments will be cleared. Structure (sections/tasks) is kept.')) return;
   state.checked = {};
   state.doneAt = {};
   state.journal = {};

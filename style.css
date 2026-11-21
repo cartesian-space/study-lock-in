@@ -4275,3 +4275,52 @@ body[data-view="practice"] #hourHeatmap { display: none !important; }
 }
 /* hover grid must have one row per day (was hard-coded to 7) */
 .hh-hits { grid-template-rows: repeat(var(--hh-rows, 30), 1fr) !important; }
+
+/* =====================================================================
+   UNSLOP POLISH — sentence case, 400–600 weights, no stat-card icons,
+   calm lock screen in the app's own style
+   ===================================================================== */
+/* Type: sentence case, normal tracking (no uppercase tracked labels) */
+.study-layout .day-nav::before, .stat-label, .task-kind, .task-bonus-tag, .practice-resolved-head, .done-group-head,
+.app-menu-label, .section-requires-label, .comment-thread-head, .log-activity-recent-label, .hh-legend, .heatmap-legend-label,
+.dim-mode .section-card .task-item.zen-focus .task-tags::before, .lock-minimal-title, .lock-minimal-sub, .data-section-title {
+  text-transform: none !important; letter-spacing: 0 !important;
+}
+.study-layout .day-nav::before { font-size: 0.78rem !important; }
+.task-kind { font-size: 0.68rem !important; font-weight: 600; }
+.stat-label { font-size: 0.7rem !important; }
+/* Weights: 600 at most, hierarchy from size */
+.header h1, .study-main .day-title, .overview-head h2, .practice-head h2, .stat-card-value,
+.practice-group-title, .section-title, .day-title { font-weight: 600 !important; }
+/* Stat cards are numbers: label, figure — no icon badge */
+.stat-card-icon { display: none !important; }
+.stat-card { gap: 4px !important; }
+/* Footer rename link */
+.footer-edit { border: none; background: none; color: var(--text-muted); font: inherit; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 2px; }
+.footer-edit:hover { color: var(--accent); }
+.data-btn-icon svg { display: block; color: var(--text-secondary); }
+.meta-action-btn.danger svg { width: 16px; height: 16px; display: block; }
+.meta-action-btn.danger { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; border: 1px solid transparent; background: none; color: var(--text-muted); cursor: pointer; }
+.meta-action-btn.danger:hover { color: var(--red); border-color: var(--border-color); }
+
+/* Lock screen: calm card in the app's palette, no animated backdrop */
+.lock-screen-overlay { background: var(--bg-primary) !important; }
+.lock-ascii-canvas { display: none !important; }
+.lock-card.lock-minimal-card {
+  background: var(--bg-card) !important; border: 1px solid var(--border-color) !important; border-radius: 16px !important;
+  box-shadow: var(--shadow-md) !important; padding: 32px 28px 24px !important; width: min(360px, calc(100vw - 32px)) !important;
+  backdrop-filter: none !important;
+}
+.lock-minimal-header { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 20px; }
+.lock-mark { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--accent); color: var(--accent-text); }
+.lock-mark svg { width: 22px; height: 22px; }
+.lock-minimal-title { font-family: var(--font-body) !important; font-size: 1.15rem !important; font-weight: 600 !important; color: var(--text-primary) !important; margin: 4px 0 0 !important; }
+.lock-minimal-sub { font-family: var(--font-body) !important; font-size: 0.82rem !important; color: var(--text-muted) !important; }
+.lock-minimal-input-row { background: var(--bg-surface) !important; border: 1px solid var(--border-color) !important; border-radius: 10px !important; height: 44px; padding: 0 6px 0 12px !important; box-shadow: none !important; }
+.lock-minimal-input-row:focus-within { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-dim) !important; }
+.lock-prompt-sym { display: none !important; }
+.lock-minimal-input { font-family: var(--font-body) !important; font-size: 0.95rem !important; color: var(--text-primary) !important; }
+.lock-minimal-eye, .lock-minimal-submit { width: 32px; height: 32px; border-radius: 8px !important; display: grid !important; place-items: center; color: var(--text-secondary) !important; background: none !important; border: none !important; }
+.lock-minimal-submit { background: var(--accent) !important; color: var(--accent-text) !important; }
+.lock-minimal-hint { font-family: var(--font-body) !important; color: var(--text-muted) !important; font-size: 0.75rem !important; margin-top: 10px; text-align: center; }
+.lock-minimal-hint kbd { font-family: var(--font-mono); font-size: 0.7rem; padding: 1px 6px; border: 1px solid var(--border-color); border-bottom-width: 2px; border-radius: 5px; background: var(--bg-card); }
